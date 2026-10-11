@@ -1,0 +1,4 @@
+# Rahasia & hasil lokal — jangan di-commit
+config.env
+*.log
+bootstrap.log
