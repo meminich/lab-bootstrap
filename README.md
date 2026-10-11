@@ -10,11 +10,11 @@ Hasilnya: akses cuma lewat Tailscale, port publik ditutup, Docker + struktur lab
 Di VPS baru, login sebagai **root**, lalu jalankan:
 
 ```bash
-curl -fsSL <URL-RAW-KAMU> | sudo bash
+curl -fsSL https://raw.githubusercontent.com/meminich/lab-bootstrap/main/bootstrap.sh | sudo bash
 ```
 
-> Repo **private**? Ganti `<URL-RAW-KAMU>` dengan URL mentah yang ada token,
-> atau download file `bootstrap.sh` dulu lalu: `sudo bash bootstrap.sh`.
+> Atau download dulu: `curl -fsSL https://raw.githubusercontent.com/meminich/lab-bootstrap/main/bootstrap.sh -o bootstrap.sh`
+> lalu `sudo bash bootstrap.sh`.
 
 Terus **ikuti petunjuk di layar.** Biasanya cuma 2 aksi manual:
 
