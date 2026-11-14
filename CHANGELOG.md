@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-15 — Pisahkan output UFW dari protokol JSON
+
+- Run 43632146448 membuktikan SSH login shell, password sudo, dan receipt pertama
+  diterima installer. Firewall aktif, tetapi Ansible gagal membaca JSON karena
+  progress UFW ikut stdout. Checkpoint kedua/foundation/reboot belum terbukti.
+- Kirim progress UFW ke stderr; stdout helper tetap JSON tunggal. Tambah regresi
+  stream output dan simpan checkpoint VM bertahap agar hasil parsial tidak hilang.
+
 ## 2026-11-15 — Diagnostik terminal SSH/sudo
 
 - Run 43629470570 menunjukkan PTY ada tetapi sudo tidak mendapat controlling

@@ -27,7 +27,13 @@ def rules_to_remove(report):
     return result
 
 
-def converge(invoke=run, read=output):
+def ufw_command(args):
+    # stdout is a machine-readable JSON protocol consumed by Ansible.
+    # Keep UFW progress on stderr, including when invoked directly from the CLI.
+    return run(args, stdout=sys.stderr)
+
+
+def converge(invoke=ufw_command, read=output):
     # Add and activate the recovery interface BEFORE deleting public allowances.
     before = read(['/usr/sbin/ufw', 'show', 'added'])
     stale = rules_to_remove(before)

@@ -151,6 +151,18 @@ class CheckpointTests(unittest.TestCase):
 
 
 class FirewallTests(unittest.TestCase):
+    def test_ufw_progress_does_not_contaminate_json_stdout(self):
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        def noisy_command(args, **kwargs):
+            print('Rules updated', file=kwargs['stdout'])
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr), \
+                patch.object(firewall, 'run', side_effect=noisy_command):
+            firewall.ufw_command(['/usr/sbin/ufw', 'reload'])
+            print(json.dumps({'changed': True, 'firewall': 'configured'}))
+        self.assertEqual(json.loads(stdout.getvalue()), {'changed': True, 'firewall': 'configured'})
+        self.assertIn('Rules updated', stderr.getvalue())
+
     def test_recovery_allowance_and_enable_precede_public_rule_removal(self):
         calls = []
         before = 'Added user rules (see ufw status for running firewall):\nufw allow 22/tcp\nufw allow 80/tcp\n'

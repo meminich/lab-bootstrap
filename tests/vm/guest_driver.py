@@ -326,6 +326,8 @@ def installer_session(fail_first=False):
                 if 'Akses Tailscale dan sudo terbukti' not in output:
                     raise RuntimeError('Genuine access verifier did not confirm the peer.')
                 checkpoints.append(purpose)
+                REPORT['checks']['checkpoints'] = list(checkpoints)
+                save_report()
                 child.sendline('')
             elif event == 5:
                 if not expected_stop:

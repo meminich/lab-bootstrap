@@ -2,8 +2,8 @@
 
 Status: installer/playbook **eksperimental** tersedia. Guard, validasi config,
 receipt, urutan gate/firewall, manifest, dependency lock, syntax Ansible, serta
-render template dapat diuji tanpa privilege. Tidak ada klaim pengujian instalasi
-Ubuntu atau jaringan nyata. Protokol dan threat model: [CHECKPOINT](CHECKPOINT.md).
+render template dapat diuji tanpa privilege. Uji dua VM menghasilkan bukti parsial
+di bawah; instalasi end-to-end belum lulus. Protokol: [CHECKPOINT](CHECKPOINT.md).
 
 ## Klaim, pemilik, dan bukti minimum
 
@@ -80,11 +80,25 @@ instruksi recovery console, serta review checkpoint privilege. Secret tidak bole
 masuk receipt, log, screenshot, atau artifact. Arsitektur yang belum diuji tidak
 boleh dilabeli didukung. Branch/PR ini bukan rilis installer.
 
-## Bukti lokal — 14 November 2026
+## Bukti VM parsial — 15 November 2026
 
-Payload digest: `46713e7185215ced44b21672d9c6d069ad41e5659c5dee60e4accbe16f824404`.
+Run [43632146448](https://github.com/meminich/lab-bootstrap/actions/runs/43632146448)
+menguji commit `2e2e59a050dd32836e2484ef3d7faeabee191a0e` (payload sebelum koreksi
+stream UFW). Dua kernel Ubuntu 22.04 berjalan dengan QEMU TCG dan Headscale privat.
 
-- **69 unit/regression tests lulus**: parser config, challenge/receipt kedaluwarsa
+- Lulus: boot, enrollment fixture, MagicDNS nama pendek, missing-receipt menolak
+  lockdown sambil menjaga akses awal, SSH login shell + password sudo nyata,
+  receipt before-lockdown diterima installer.
+- Berhenti: UFW aktif tetapi progress stdout merusak parsing JSON Ansible.
+- Belum terbukti: SSH baru setelah lockdown, checkpoint foundation, Docker privat,
+  integritas rerun, dan reboot. Bukti sebelum perubahan bukan bukti payload terbaru.
+- Tidak diuji: login SaaS/ACL akun pemilik, routing/image/console Contabo.
+
+## Bukti lokal — diperbarui 15 November 2026
+
+Payload digest: `586b2b46155719ff36d9f5c0bd6511eabc8380cb38b940ea1132e9245351c8b6`.
+
+- **70 unit/regression tests lulus**: parser config, challenge/receipt kedaluwarsa
   dan salah instance/user/run, koneksi baru per checkpoint, urutan gate/failure,
   UFW tidak reset/disable, manifest drift/symlink, guard legacy, serta bundle
   roundtrip/checksum dan build berulang identik. Installer dari paket yang
