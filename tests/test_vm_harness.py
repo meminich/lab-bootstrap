@@ -1,4 +1,5 @@
 import importlib.util
+import ipaddress
 import os
 import re
 from pathlib import Path
@@ -14,6 +15,15 @@ SPEC.loader.exec_module(FIXTURE)
 
 
 class VmHarnessSafety(unittest.TestCase):
+    def test_fixture_reverse_dns_fits_jammy_resolved_domain_limit(self):
+        prefix = ipaddress.ip_network(FIXTURE.headscale_config('172.30.0.2')['prefixes']['v4'])
+        # Headscale v0.29.7 util.GenerateIPv4DNSRootDomain expands the next octet,
+        # including an entire octet when prefixlen is byte-aligned (e.g. /24).
+        reverse_domains = 1 << (8 - prefix.prefixlen % 8)
+        self.assertLessEqual(reverse_domains + 2, 32)  # IPv6 route + base domain.
+        self.assertIn(ipaddress.ip_address('100.64.0.1'), prefix)
+        self.assertIn(ipaddress.ip_address('100.64.0.2'), prefix)
+
     def test_checkpoint_survives_tmux_cursor_movement_and_wrap(self):
         spec = importlib.util.spec_from_file_location('terminal_protocol', ROOT / 'tests/vm/terminal_protocol.py')
         protocol = importlib.util.module_from_spec(spec)

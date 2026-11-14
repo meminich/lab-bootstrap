@@ -2,6 +2,9 @@
 
 ## 2026-11-15 — Diagnostik MagicDNS acceptance
 
+- Run 43625046658 menemukan `setLinkDomains: Too many search domains per link`.
+  Headscale v0.29.7 menghasilkan 256 reverse-DNS routes untuk `/24`; gunakan `/28`
+  pada fixture (16 routes). Tidak mengubah DNS host aktif atau installer produksi.
 - Run 43622487097 melewati preflight resume, tetapi client gagal resolve vpslab
   sebelum koneksi SSH checkpoint. Belum ada bukti checkpoint positif/lockdown.
 - Tambah status mesh tersaring dan diagnostik resolver fixture; tunggu propagasi

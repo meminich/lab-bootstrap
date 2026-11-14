@@ -18,6 +18,11 @@ from the existence of these scripts. No production Tailscale credentials require
   forwards bind only to container loopback, not the runner's public interface.
 - The control server is HTTPS with a generated fixture CA, fake identity, and
   short-lived single-use auth keys. Private DERP only, no production tailnet.
+- Fixture allocation uses `100.64.0.0/28`. Headscale v0.29.7's
+  `GenerateIPv4DNSRootDomain` expands `/24` into 256 reverse-DNS routes, exceeding
+  Jammy systemd-resolved's per-link domain limit and preventing short-name DNS.
+  `/28` produces 16 routes, while retaining genuine MagicDNS and both IP families.
+  No hosts-file entries, manual search-domain injection, or IP fallback is used.
 - Only generated test artifacts are shared between fixture components. No lab
   service folders, credentials, runtime DBs, or user documents are mounted/read.
 - Only sanitized reports/logs are uploaded. Never upload cloud-init seeds, disks,
@@ -61,5 +66,6 @@ flip the candidate's `production_ready` field or publish a production release.
 - https://cloud-images.ubuntu.com/jammy/20261106/SHA256SUMS
 - https://github.com/juanfont/headscale/releases/tag/v0.29.7
 - https://github.com/juanfont/headscale/blob/v0.29.7/config-example.yaml
+- https://github.com/juanfont/headscale/blob/v0.29.7/hscontrol/util/dns.go
 - https://headscale.net/stable/ref/policy/
 - https://docs.github.com/en/actions/concepts/runners/github-hosted-runners

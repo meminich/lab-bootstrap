@@ -42,7 +42,9 @@ def headscale_config(ip):
         'metrics_listen_addr': '127.0.0.1:9090', 'grpc_listen_addr': '127.0.0.1:50443',
         'grpc_allow_insecure': False, 'disable_check_updates': True,
         'noise': {'private_key_path': '/var/lib/headscale/noise.key'},
-        'prefixes': {'v4': '100.64.0.0/24', 'v6': 'fd7a:115c:a1e0::/48', 'allocation': 'sequential'},
+        # Headscale 0.29.7 expands /24 into 256 reverse-DNS routes, exceeding
+        # Jammy resolved's per-link domain limit. /28 needs only 16 routes.
+        'prefixes': {'v4': '100.64.0.0/28', 'v6': 'fd7a:115c:a1e0::/48', 'allocation': 'sequential'},
         'database': {'type': 'sqlite', 'sqlite': {'path': '/var/lib/headscale/db.sqlite',
                                               'write_ahead_log': True}},
         'tls_cert_path': '/etc/headscale/server.crt', 'tls_key_path': '/etc/headscale/server.key',

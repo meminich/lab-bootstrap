@@ -84,7 +84,7 @@ boleh dilabeli didukung. Branch/PR ini bukan rilis installer.
 
 Payload digest: `46713e7185215ced44b21672d9c6d069ad41e5659c5dee60e4accbe16f824404`.
 
-- **67 unit/regression tests lulus**: parser config, challenge/receipt kedaluwarsa
+- **68 unit/regression tests lulus**: parser config, challenge/receipt kedaluwarsa
   dan salah instance/user/run, koneksi baru per checkpoint, urutan gate/failure,
   UFW tidak reset/disable, manifest drift/symlink, guard legacy, serta bundle
   roundtrip/checksum dan build berulang identik. Installer dari paket yang
