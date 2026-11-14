@@ -159,10 +159,12 @@ def main(work):
     except Exception as error:
         failure = {'status': 'failed', 'host_stage': stage, 'error': redact(str(error)),
                    'commercial_tailnet_tested': False, 'production_ready': False}
+        if isinstance(error, subprocess.CalledProcessError):
+            failure['stderr'] = redact((error.stderr or '')[-12000:])
         write(public / 'harness-failure.json', json.dumps(failure, indent=2), 0o644)
         if stage.startswith(('start-private-control', 'create-fixture')):
             logs = subprocess.run(['docker', 'logs', control], capture_output=True, text=True, check=False)
-            write(public / 'control-error.txt', redact(logs.stderr[-12000:]), 0o644)
+            write(public / 'control-error.txt', redact((logs.stdout + logs.stderr)[-12000:]), 0o644)
         raise
     finally:
         # Names are unique and created by this invocation; no broad prune/delete.
