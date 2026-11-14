@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-15 — Docker/rerun terbukti, koreksi asumsi DNS IPv6
+
+- Run 43638905586 meluluskan tiga gate, HTTP Docker privat/tidak bocor pada
+  interface luar, serta hash/inode/UID/GID data fixture tetap setelah rerun.
+- Source Tailscale v1.104.7 mengonfirmasi AAAA MagicDNS sengaja disaring pada node
+  dengan IPv4 (issue 1152). Pisahkan tes hostname wajib dari transport IPv6 yang
+  memakai alamat node yang dilaporkan; bukan fallback login atau override DNS.
+- Reboot belum lulus: console mencapai `Restarting system` setelah shutdown
+  lambat; anggaran observasi TCG naik 300→900 detik, workflow 60→90 menit.
+
 ## 2026-11-15 — Tiga checkpoint nyata lulus, diagnosis IPv6 lanjutan
 
 - Run 43634852921 menerima tiga receipt SSH/sudo terpisah, termasuk akses Docker

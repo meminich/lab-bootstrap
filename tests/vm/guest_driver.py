@@ -2,6 +2,7 @@
 """Executable fixture driver; run only inside the disposable VM-tools container."""
 import hashlib
 import io
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -74,7 +75,7 @@ def py_command(code):
     return '/usr/bin/python3 -c ' + shlex.quote(code)
 
 
-def peer(command, sudo=False, timeout=120, family=None):
+def peer(command, sudo=False, timeout=120, family=None, host='vpslab'):
     # Two distinct kernels: factory SSH reaches the client, then normal ssh uses
     # MagicDNS and the client's actual Tailscale interface to reach the target.
     if sudo:
@@ -82,7 +83,7 @@ def peer(command, sudo=False, timeout=120, family=None):
     inner = ['ssh', *(['-' + str(family)] if family in (4, 6) else []), '-tt', '-o', 'StrictHostKeyChecking=accept-new',
              '-o', 'UserKnownHostsFile=/root/.ssh/fixture_mesh_hosts',
              '-o', 'ConnectTimeout=15', '-o', 'ControlMaster=no',
-             '-o', 'ControlPath=none', 'vpsadmin@vpslab']
+             '-o', 'ControlPath=none', 'vpsadmin@' + host]
     outer = shlex.join(inner)
     child = pexpect.spawn('ssh', ssh_args(2223, outer, tty=True), encoding='utf-8',
                           codec_errors='replace', timeout=timeout, dimensions=(50, 240))
@@ -394,10 +395,19 @@ def acceptance():
     if receipt['source_digest'] != META['source_digest']:
         raise RuntimeError('Installed source differs from candidate.')
     REPORT['checks']['unmodified_production_source_digest'] = True
+    target_v6 = mark_json(peer(py_command(
+        "import json,subprocess;print('LABJSON:'+json.dumps(subprocess.check_output(['tailscale','ip','-6'],text=True).strip()))")))
+    if ipaddress.ip_address(target_v6) not in ipaddress.ip_network('fd7a:115c:a1e0::/48'):
+        raise RuntimeError('Target did not report a fixture Tailscale IPv6 address.')
+    REPORT['explicit_ipv6_transport_target'] = target_v6
     family_failures = {}
     for family in (4, 6):
         try:
-            if 'mesh-family-ok' not in peer('printf mesh-family-ok', family=family):
+            # Separate claims: ordinary hostname path remains mandatory above.
+            # MagicDNS deliberately omits AAAA on dual-stack nodes (issue 1152),
+            # so the explicit IPv6 transport probe uses the node's reported IP.
+            if 'mesh-family-ok' not in peer('printf mesh-family-ok', family=family,
+                                            host=target_v6 if family == 6 else 'vpslab'):
                 raise RuntimeError('Private SSH address family check failed.')
             REPORT['checks']['private_ssh_ipv' + str(family)] = True
         except RuntimeError as error:
@@ -437,8 +447,11 @@ print('LABJSON:'+json.dumps({x.name:[hashlib.sha256(x.read_bytes()).hexdigest(),
         peer_sudo_shell('/usr/bin/systemctl reboot', timeout=30)
     except (RuntimeError, pexpect.EOF):
         pass  # Connection closure is normal; boot-ID change is the actual proof.
-    deadline = time.monotonic() + 300
+    REPORT['reboot_wait_seconds'] = 900
+    deadline = time.monotonic() + REPORT['reboot_wait_seconds']
     while True:
+        if target.poll() is not None:
+            raise RuntimeError('Target QEMU process exited during reboot.')
         try:
             observed = mark_json(peer(py_command(
                 "import json,pathlib;print('LABJSON:'+json.dumps(pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip()))"),
@@ -451,6 +464,7 @@ print('LABJSON:'+json.dumps({x.name:[hashlib.sha256(x.read_bytes()).hexdigest(),
         except (RuntimeError, pexpect.TIMEOUT, pexpect.EOF):
             pass
         if time.monotonic() >= deadline:
+            mesh_diagnostics('reboot-failure')
             raise RuntimeError('Target did not return through Tailscale after reboot.')
         time.sleep(5)
     factory(2223, 'curl -4 --retry 20 --retry-connrefused --retry-delay 2 --max-time 10 -fsS http://vpslab:8080/', timeout=120)

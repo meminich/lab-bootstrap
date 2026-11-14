@@ -82,6 +82,15 @@ boleh dilabeli didukung. Branch/PR ini bukan rilis installer.
 
 ## Bukti VM parsial — 15 November 2026
 
+Run [43638905586](https://github.com/meminich/lab-bootstrap/actions/runs/43638905586)
+menguji commit `ffb47659e0bd996e66fb728303488cd3ee3e94cc`, payload sama dengan digest
+di bawah. Selain tiga checkpoint, HTTP container melalui tailnet/tidak melalui
+interface luar lulus; rerun mempertahankan hash/inode/UID/GID fixture SQLite/PDF
+saat container berjalan. Reboot belum kembali dalam 300 detik; serial console
+terakhir mencapai `Restarting system`. Tes `ssh -6 vpslab` memakai asumsi AAAA
+yang bertentangan dengan default Tailscale (issue 1152); tes berikutnya memisahkan
+hostname normal dan transport IPv6 tanpa override DNS. Belum lulus end-to-end.
+
 Run [43634852921](https://github.com/meminich/lab-bootstrap/actions/runs/43634852921)
 menguji commit `93fdb238f6b63eb889171d24e27ab047d8c8925a`, dengan payload digest
 di bawah. Ketiga checkpoint SSH/sudo terpisah lulus, termasuk bukti Docker group.

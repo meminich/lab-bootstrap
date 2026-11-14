@@ -22,7 +22,8 @@ from the existence of these scripts. No production Tailscale credentials require
   `GenerateIPv4DNSRootDomain` expands `/24` into 256 reverse-DNS routes, exceeding
   Jammy systemd-resolved's per-link domain limit and preventing short-name DNS.
   `/28` produces 16 routes, while retaining genuine MagicDNS and both IP families.
-  No hosts-file entries, manual search-domain injection, or IP fallback is used.
+  The normal hostname/checkpoint path uses no hosts-file entries, manual
+  search-domain injection, or IP fallback.
 - Only generated test artifacts are shared between fixture components. No lab
   service folders, credentials, runtime DBs, or user documents are mounted/read.
 - Only sanitized reports/logs are uploaded. Never upload cloud-init seeds, disks,
@@ -51,11 +52,21 @@ from the existence of these scripts. No production Tailscale credentials require
 9. Reboot the actual target kernel; prove boot ID changes, SSH/DNS/Docker recover,
    non-tailnet exposure does not return, and data fixtures remain identical.
 
-An additional explicit SSH IPv4/IPv6 check records each family separately. A
+An additional explicit SSH transport check records each family separately. A
 family failure does not prevent collecting independent container/reboot evidence,
-but the final workflow still fails unless both families passed. There is no
-fallback to literals or hosts-file entries. Boot IDs use marked JSON/UUIDs, not
-the last line of an interactive transcript.
+but the final workflow still fails unless both families passed. Normal login,
+checkpoints, HTTP, and post-reboot reconnection must use `vpslab`. The separate
+IPv6 transport check uses the target's actual reported Tailscale IPv6 address:
+Tailscale v1.104.7's `node_backend.go` deliberately filters MagicDNS AAAA when
+IPv4 is available (issue 1152). Requiring `ssh -6 vpslab` was therefore an invalid
+test assumption, not an installer release requirement. The literal is not a
+fallback for failed normal-name login; both the hostname and IPv6 transport are
+mandatory independent checks. No hosts-file entries or DNS overrides are added.
+Boot IDs use marked JSON/UUIDs, not the last line of an interactive transcript.
+
+TCG reboot observation allows 900 seconds, including shutdown and new kernel
+boot. The workflow budget is 90 minutes to leave room for sanitized artifact
+upload after a slow software-emulated install/reboot; no timeout implies success.
 
 ## Limits — not equivalent to the owner's account/provider
 
@@ -76,5 +87,7 @@ flip the candidate's `production_ready` field or publish a production release.
 - https://github.com/juanfont/headscale/releases/tag/v0.29.7
 - https://github.com/juanfont/headscale/blob/v0.29.7/config-example.yaml
 - https://github.com/juanfont/headscale/blob/v0.29.7/hscontrol/util/dns.go
+- https://github.com/tailscale/tailscale/blob/v1.104.7/ipn/ipnlocal/node_backend.go
+- https://github.com/tailscale/tailscale/issues/1152
 - https://headscale.net/stable/ref/policy/
 - https://docs.github.com/en/actions/concepts/runners/github-hosted-runners

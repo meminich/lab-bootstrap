@@ -24,7 +24,7 @@ concurrency:
 jobs:
   disposable-vms:
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - name: Checkout candidate (no retained GitHub credentials)
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683

@@ -63,6 +63,10 @@ class VmHarnessSafety(unittest.TestCase):
             ready_pattern = child.expect.call_args_list[0].args[0]
             for ending in ('\n', '\r\n', '\r\r\n'):
                 self.assertIsNotNone(re.search(ready_pattern, ending + 'LAB-SHELL-READY' + ending))
+            namespace['peer']('printf mesh-family-ok', family=6, host='fd7a:115c:a1e0::2')
+            ipv6 = shlex.split(pexpect.spawn.call_args.args[1][0])
+            self.assertEqual(ipv6[-1], 'vpsadmin@fd7a:115c:a1e0::2')
+            self.assertIn('-6', ipv6)
 
     def test_fixture_reverse_dns_fits_jammy_resolved_domain_limit(self):
         prefix = ipaddress.ip_network(FIXTURE.headscale_config('172.30.0.2')['prefixes']['v4'])
