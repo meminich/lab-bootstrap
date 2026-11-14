@@ -15,6 +15,29 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ConfigTests(unittest.TestCase):
+    def test_resume_only_allows_exact_local_tailscale_peerapi_endpoints(self):
+        status = {'BackendState': 'Running', 'TailscaleIPs': ['100.64.0.2', 'fd7a:115c:a1e0::2'],
+                  'Self': {'PeerAPIURL': ['http://100.64.0.2:34567',
+                                         'http://[fd7a:115c:a1e0::2]:45678']}}
+        expected = installer.tailscale_peer_listeners(status)
+        self.assertEqual(expected, {('100.64.0.2', '34567'), ('fd7a:115c:a1e0::2', '45678')})
+        for endpoint in ('100.64.0.2:34567', '[fd7a:115c:a1e0::2]:45678'):
+            installer.check_listeners('LISTEN 0 4096 ' + endpoint + ' *:*', expected_tcp=expected)
+        for endpoint in ('0.0.0.0:34567', '100.64.0.3:34567', '100.64.0.2:8080'):
+            with self.assertRaises(common.SafetyError):
+                installer.check_listeners('LISTEN 0 4096 ' + endpoint + ' *:*', expected_tcp=expected)
+        with self.assertRaises(common.SafetyError):
+            installer.check_listeners('LISTEN 0 4096 100.64.0.2:34567 *:*')
+        self.assertEqual(installer.tailscale_peer_listeners({**status, 'BackendState': 'Stopped'}), set())
+
+    def test_peerapi_urls_cannot_allow_public_or_other_nodes_listeners(self):
+        status = {'BackendState': 'Running', 'TailscaleIPs': ['100.64.0.2'],
+                  'Self': {'PeerAPIURL': ['http://0.0.0.0:8080', 'http://100.64.0.3:8080',
+                                         'http://100.64.0.2:0', 'http://100.64.0.2:99999',
+                                         'http://user@100.64.0.2:8080', 'http://100.64.0.2:8080/bad']},
+                  'Peer': {'other': {'PeerAPIURL': ['http://100.64.0.2:8080']}}}
+        self.assertEqual(installer.tailscale_peer_listeners(status), set())
+
     def test_defaults_do_not_inherit_shell_hostname(self):
         with patch.dict('os.environ', {'HOSTNAME': 'unrelated'}):
             self.assertEqual(common.validated_config({})['hostname'], 'vpslab')

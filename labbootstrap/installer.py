@@ -20,6 +20,7 @@ import subprocess
 import tempfile
 import time
 import urllib.request
+import urllib.parse
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from labbootstrap.common import (  # noqa: E402
@@ -96,7 +97,25 @@ def parse_os(text):
     return result
 
 
-def check_listeners(report, udp=False):
+def tailscale_peer_listeners(status):
+    """Only the running local node's advertised PeerAPI endpoints, never peers."""
+    if status.get('BackendState') != 'Running':
+        return set()
+    assigned = {ip for ip in status.get('TailscaleIPs', []) if tailnet_ip(ip)}
+    endpoints = set()
+    for value in (status.get('Self') or {}).get('PeerAPIURL') or []:
+        try:
+            url = urllib.parse.urlsplit(value)
+            if (url.scheme == 'http' and url.hostname in assigned and url.port
+                    and not url.username and not url.password and url.path in ('', '/')
+                    and not url.query and not url.fragment):
+                endpoints.add((url.hostname, str(url.port)))
+        except ValueError:
+            continue
+    return endpoints
+
+
+def check_listeners(report, udp=False, expected_tcp=()):
     # ss -H -ltn: State Recv-Q Send-Q Local Peer. Only public SSH is expected.
     for line in report.splitlines():
         fields = line.split()
@@ -104,6 +123,8 @@ def check_listeners(report, udp=False):
             raise SafetyError('Format listener tidak dikenal.')
         address, port = fields[3].rsplit(':', 1)
         address = address.strip('[]').split('%', 1)[0]
+        if not udp and (address, port) in expected_tcp:
+            continue
         if port in (('68', '546', '41641') if udp else ('22',)):
             continue
         try:
@@ -112,7 +133,8 @@ def check_listeners(report, udp=False):
             local = False
         permitted_loopback = port in (('53', '123', '323') if udp else ('53',))
         if not local or not permitted_loopback:
-            raise SafetyError('Ada listener di luar baseline; target tidak fresh.')
+            raise SafetyError('Ada listener di luar baseline; target tidak fresh: '
+                              + ('UDP ' if udp else 'TCP ') + fields[3])
 
 
 def check_package_locks():
@@ -150,8 +172,6 @@ def preflight(config, state=None):
         result = subprocess.run(['cloud-init', 'status'], capture_output=True, text=True, check=False)
         if result.returncode != 0 or not any(x in result.stdout for x in ('status: done', 'status: disabled')):
             raise SafetyError('Tunggu/perbaiki cloud-init sebelum melanjutkan.')
-    check_listeners(output(['ss', '-H', '-ltn']))
-    check_listeners(output(['ss', '-H', '-lun']), udp=True)
     check_package_locks()
     for url in ('https://pypi.org/simple/ansible-core/',
                 'https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg',
@@ -186,6 +206,11 @@ def preflight(config, state=None):
                 raise SafetyError('Resource existing tidak diambil alih: ' + str(p))
         if INSTALL_DIR.exists() or INSTALL_DIR.is_symlink():
             raise SafetyError('Direktori installer existing tanpa state yang cocok.')
+    expected_tcp = set()
+    if state and state.get('prepared'):
+        expected_tcp = tailscale_peer_listeners(json.loads(output(['tailscale', 'status', '--json'])))
+    check_listeners(output(['ss', '-H', '-ltn']), expected_tcp=expected_tcp)
+    check_listeners(output(['ss', '-H', '-lun']), udp=True)
     return os_info
 
 

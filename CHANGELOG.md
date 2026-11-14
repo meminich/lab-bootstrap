@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-15 — Resume setelah Tailscale aktif
+
+- Preflight resume mengenali hanya endpoint TCP PeerAPI node lokal yang dilaporkan
+  daemon Tailscale Running, setelah identitas/manifest resume tervalidasi.
+  Listener wildcard, node lain, dan port layanan asing tetap ditolak.
+- Tambah regresi dan diagnostik alamat/protokol listener pada kegagalan VM.
+- Run 43617417505 membuktikan missing-receipt menghentikan installer tanpa
+  memutus akses awal; resume ditolak pemeriksaan listener. Belum lulus end-to-end.
+
 ## 2026-11-14 — Koreksi penyiapan dan pembaca checkpoint VM
 
 - Simpan stderr Docker tersanitasi; gunakan subnet eksplisit yang tidak tumpang

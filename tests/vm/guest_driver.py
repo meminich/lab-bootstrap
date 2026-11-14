@@ -328,6 +328,7 @@ def acceptance():
     if not all(outside_probe(22).values()):
         raise RuntimeError('Missing receipt caused premature lockdown.')
     REPORT['checks']['missing_receipt_preserves_initial_access'] = True
+    REPORT['listeners_after_prepare'] = factory(2222, 'ss -H -ltn; ss -H -lun')
     stage('resume-and-three-genuine-checkpoints')
     installer_session(fail_first=False)
     receipt = mark_json(peer_sudo_shell(py_command(
@@ -401,6 +402,11 @@ if __name__ == '__main__':
         REPORT['status'] = 'failed'
         REPORT['error'] = redact(str(error))
         save_report()
+        try:
+            (WORK / 'public/listeners-at-failure.txt').write_text(
+                redact(factory(2222, 'ss -H -ltn; ss -H -lun', timeout=15)))
+        except (subprocess.SubprocessError, OSError):
+            pass
         for name in ('target', 'client'):
             for filename in ('console.log', 'qemu.log'):
                 path = WORK / name / filename
