@@ -12,6 +12,7 @@ import subprocess
 import tarfile
 import time
 import urllib.request
+import uuid
 
 import pexpect
 from terminal_protocol import CHECKPOINT_PATTERN
@@ -261,7 +262,9 @@ print(json.dumps({'BackendState':s.get('BackendState'),'Health':s.get('Health'),
             text = factory(port, py_command(status_code), timeout=30)
             text += '\n' + factory(port, 'resolvectl status; cat /etc/resolv.conf; '
                                    'getent ahosts vpslab; resolvectl query vpslab; '
-                                   'resolvectl query vpslab.fixture.test', timeout=30)
+                                   'resolvectl query vpslab.fixture.test; '
+                                   'resolvectl query --type=AAAA vpslab.fixture.test; '
+                                   'getent ahostsv6 vpslab; ip -6 addr; ip -6 route', timeout=30)
         except (subprocess.SubprocessError, OSError) as error:
             text += '\n' + str(error)
             if isinstance(error, subprocess.CalledProcessError):
@@ -391,10 +394,19 @@ def acceptance():
     if receipt['source_digest'] != META['source_digest']:
         raise RuntimeError('Installed source differs from candidate.')
     REPORT['checks']['unmodified_production_source_digest'] = True
+    family_failures = {}
     for family in (4, 6):
-        if 'mesh-family-ok' not in peer('printf mesh-family-ok', family=family):
-            raise RuntimeError('Private SSH address family check failed.')
-    REPORT['checks']['private_ssh_ipv4_ipv6'] = True
+        try:
+            if 'mesh-family-ok' not in peer('printf mesh-family-ok', family=family):
+                raise RuntimeError('Private SSH address family check failed.')
+            REPORT['checks']['private_ssh_ipv' + str(family)] = True
+        except RuntimeError as error:
+            family_failures[str(family)] = redact(str(error))
+            REPORT['checks']['private_ssh_ipv' + str(family)] = False
+            mesh_diagnostics('family-' + str(family) + '-failure')
+        save_report()
+    REPORT['checks']['private_ssh_ipv4_ipv6'] = not family_failures
+    REPORT['family_failures'] = family_failures
     stage('real-private-container-and-public-side-probes')
     peer('cp -r ~/playground/_template ~/playground/fixture-web && cd ~/playground/fixture-web '
          '&& cp .env.example .env && chmod 600 .env && docker compose up -d', timeout=240)
@@ -428,7 +440,11 @@ print('LABJSON:'+json.dumps({x.name:[hashlib.sha256(x.read_bytes()).hexdigest(),
     deadline = time.monotonic() + 300
     while True:
         try:
-            observed = peer('cat /proc/sys/kernel/random/boot_id', timeout=25).strip().splitlines()[-1]
+            observed = mark_json(peer(py_command(
+                "import json,pathlib;print('LABJSON:'+json.dumps(pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip()))"),
+                timeout=25))
+            # Login-shell banners/logout text must never count as a changed ID.
+            uuid.UUID(observed)
             if observed != initial_boot:
                 REPORT['target_rebooted_boot_id'] = observed
                 break
@@ -443,6 +459,9 @@ print('LABJSON:'+json.dumps({x.name:[hashlib.sha256(x.read_bytes()).hexdigest(),
     if mark_json(peer(py_command(fixture))) != before:
         raise RuntimeError('Fixture data changed after reboot.')
     REPORT['checks']['reboot_ssh_docker_dns_and_firewall'] = True
+    if family_failures:
+        raise RuntimeError('Independent checks completed, but private SSH address family checks failed: '
+                           + json.dumps(family_failures))
     REPORT['status'] = 'passed-isolated-control-plane'
     REPORT['limitations'] = ['Commercial Tailscale browser/account login not exercised',
                              'Outside NIC is simulated, not Contabo public routing',

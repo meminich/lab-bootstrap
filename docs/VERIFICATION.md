@@ -82,6 +82,14 @@ boleh dilabeli didukung. Branch/PR ini bukan rilis installer.
 
 ## Bukti VM parsial — 15 November 2026
 
+Run [43634852921](https://github.com/meminich/lab-bootstrap/actions/runs/43634852921)
+menguji commit `93fdb238f6b63eb889171d24e27ab047d8c8925a`, dengan payload digest
+di bawah. Ketiga checkpoint SSH/sudo terpisah lulus, termasuk bukti Docker group.
+Probe client non-tailnet SSH IPv4/IPv6 berubah dari terbuka menjadi tertutup.
+Installer menyelesaikan foundation dan result digest cocok. Tes lanjutan gagal
+pada resolusi alamat `ssh -6 vpslab`; Docker HTTP/rerun/reboot belum dijalankan.
+Ini bukti parsial, bukan kelulusan end-to-end atau kelulusan akun/provider pemilik.
+
 Run [43632146448](https://github.com/meminich/lab-bootstrap/actions/runs/43632146448)
 menguji commit `2e2e59a050dd32836e2484ef3d7faeabee191a0e` (payload sebelum koreksi
 stream UFW). Dua kernel Ubuntu 22.04 berjalan dengan QEMU TCG dan Headscale privat.
@@ -98,7 +106,7 @@ stream UFW). Dua kernel Ubuntu 22.04 berjalan dengan QEMU TCG dan Headscale priv
 
 Payload digest: `586b2b46155719ff36d9f5c0bd6511eabc8380cb38b940ea1132e9245351c8b6`.
 
-- **70 unit/regression tests lulus**: parser config, challenge/receipt kedaluwarsa
+- **71 unit/regression tests lulus**: parser config, challenge/receipt kedaluwarsa
   dan salah instance/user/run, koneksi baru per checkpoint, urutan gate/failure,
   UFW tidak reset/disable, manifest drift/symlink, guard legacy, serta bundle
   roundtrip/checksum dan build berulang identik. Installer dari paket yang

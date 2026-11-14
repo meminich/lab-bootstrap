@@ -2,6 +2,7 @@ import importlib.util
 import ipaddress
 import ast
 import io
+import json
 import os
 import re
 import shlex
@@ -18,6 +19,17 @@ SPEC.loader.exec_module(FIXTURE)
 
 
 class VmHarnessSafety(unittest.TestCase):
+    def test_boot_id_parser_ignores_login_and_logout_text(self):
+        tree = ast.parse((ROOT / 'tests/vm/guest_driver.py').read_text())
+        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'mark_json')
+        namespace = {'json': json, 'redact': lambda text: text}
+        exec(compile(ast.Module(body=[function], type_ignores=[]), '<mark_json>', 'exec'), namespace)
+        boot_id = 'c6e6bdbc-7da2-4666-9663-b6c62cbe8f1a'
+        output = 'Welcome\r\nLABJSON:' + json.dumps(boot_id) + '\r\nlogout\r\nConnection closed.\r\n'
+        self.assertEqual(namespace['mark_json'](output), boot_id)
+        with self.assertRaises(RuntimeError):
+            namespace['mark_json']('logout\r\nConnection closed.\r\n')
+
     def test_peer_opens_login_shell_before_sudo_password_interaction(self):
         # Load only this function; importing the executable driver would read
         # generated fixture metadata and is deliberately not a host-safe API.

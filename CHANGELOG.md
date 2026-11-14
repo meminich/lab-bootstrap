@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-15 — Tiga checkpoint nyata lulus, diagnosis IPv6 lanjutan
+
+- Run 43634852921 menerima tiga receipt SSH/sudo terpisah, termasuk akses Docker
+  admin; probe SSH non-tailnet IPv4/IPv6 diblokir. Payload digest cocok.
+- Tes tambahan `ssh -6 vpslab` gagal resolusi alamat. Rekam query AAAA/rute IPv6;
+  lanjutkan bukti Docker/rerun/reboot yang independen, tetapi hasil akhir tetap
+  gagal jika tes keluarga alamat gagal (bukan skip atau fallback).
+- Boot ID dibaca dari output JSON dan divalidasi UUID, bukan baris terakhir
+  transkrip login shell yang dapat berupa pesan logout. Tambah regresi parser.
+
 ## 2026-11-15 — Pisahkan output UFW dari protokol JSON
 
 - Run 43632146448 membuktikan SSH login shell, password sudo, dan receipt pertama

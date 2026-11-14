@@ -51,6 +51,12 @@ from the existence of these scripts. No production Tailscale credentials require
 9. Reboot the actual target kernel; prove boot ID changes, SSH/DNS/Docker recover,
    non-tailnet exposure does not return, and data fixtures remain identical.
 
+An additional explicit SSH IPv4/IPv6 check records each family separately. A
+family failure does not prevent collecting independent container/reboot evidence,
+but the final workflow still fails unless both families passed. There is no
+fallback to literals or hosts-file entries. Boot IDs use marked JSON/UUIDs, not
+the last line of an interactive transcript.
+
 ## Limits — not equivalent to the owner's account/provider
 
 Headscale exercises real Tailscale daemons, transport, MagicDNS, and SSH policy,
