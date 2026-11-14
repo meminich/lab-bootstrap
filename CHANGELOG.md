@@ -2,6 +2,8 @@
 
 ## 2026-11-15 — Resume setelah Tailscale aktif
 
+- Tangani format `ss` IPv6 `[alamat]%interface:port`; regresi memakai format
+  listener dari run 43620070683, bukan hanya alamat IPv6 tanpa scope.
 - Preflight resume mengenali hanya endpoint TCP PeerAPI node lokal yang dilaporkan
   daemon Tailscale Running, setelah identitas/manifest resume tervalidasi.
   Listener wildcard, node lain, dan port layanan asing tetap ditolak.

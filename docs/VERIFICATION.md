@@ -82,7 +82,7 @@ boleh dilabeli didukung. Branch/PR ini bukan rilis installer.
 
 ## Bukti lokal — 14 November 2026
 
-Payload digest: `607748c97ff9d934c343e6360c64c47580e4506b6f165b7b157a56f324350f10`.
+Payload digest: `46713e7185215ced44b21672d9c6d069ad41e5659c5dee60e4accbe16f824404`.
 
 - **67 unit/regression tests lulus**: parser config, challenge/receipt kedaluwarsa
   dan salah instance/user/run, koneksi baru per checkpoint, urutan gate/failure,

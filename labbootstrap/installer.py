@@ -122,7 +122,7 @@ def check_listeners(report, udp=False, expected_tcp=()):
         if len(fields) < 5:
             raise SafetyError('Format listener tidak dikenal.')
         address, port = fields[3].rsplit(':', 1)
-        address = address.strip('[]').split('%', 1)[0]
+        address = address.split('%', 1)[0].strip('[]')
         if not udp and (address, port) in expected_tcp:
             continue
         if port in (('68', '546', '41641') if udp else ('22',)):

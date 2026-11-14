@@ -21,7 +21,8 @@ class ConfigTests(unittest.TestCase):
                                          'http://[fd7a:115c:a1e0::2]:45678']}}
         expected = installer.tailscale_peer_listeners(status)
         self.assertEqual(expected, {('100.64.0.2', '34567'), ('fd7a:115c:a1e0::2', '45678')})
-        for endpoint in ('100.64.0.2:34567', '[fd7a:115c:a1e0::2]:45678'):
+        for endpoint in ('100.64.0.2:34567', '[fd7a:115c:a1e0::2]:45678',
+                         '100.64.0.2%tailscale0:34567', '[fd7a:115c:a1e0::2]%tailscale0:45678'):
             installer.check_listeners('LISTEN 0 4096 ' + endpoint + ' *:*', expected_tcp=expected)
         for endpoint in ('0.0.0.0:34567', '100.64.0.3:34567', '100.64.0.2:8080'):
             with self.assertRaises(common.SafetyError):
