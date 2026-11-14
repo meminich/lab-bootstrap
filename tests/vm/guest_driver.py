@@ -17,6 +17,7 @@ import uuid
 
 import pexpect
 from terminal_protocol import CHECKPOINT_PATTERN
+from qmp import command as qmp_command
 
 WORK = Path('/work')
 META = json.loads((WORK / 'metadata.json').read_text())
@@ -194,6 +195,7 @@ def boot(name, index, port):
             '-cpu', 'host' if accelerated else 'max', '-m', '2048' if name == 'target' else '1024',
             '-smp', '2' if name == 'target' else '1', '-display', 'none',
             '-serial', 'file:' + str(directory / 'console.log'),
+            '-qmp', 'unix:' + str(directory / 'qmp.sock') + ',server=on,wait=off',
             '-drive', 'file=' + str(directory / 'disk.qcow2') + ',if=virtio,format=qcow2',
             '-drive', 'file=' + str(directory / 'seed.iso') + ',format=raw,media=cdrom,readonly=on',
             '-netdev', 'user,id=wan,hostfwd=tcp:127.0.0.1:' + str(port) + '-:22',
@@ -219,6 +221,45 @@ def wait_factory(port, process, timeout=900):
             pass
         time.sleep(5)
     raise RuntimeError('Fresh guest did not finish cloud-init.')
+
+
+def vm_diagnostics():
+    for name in ('target', 'client'):
+        path = WORK / name / 'qmp.sock'
+        if not path.exists():
+            continue
+        observation = {}
+        try:
+            observation['status'] = qmp_command(path, 'query-status')
+            # Capture only the VGA display, never memory/disks/daemon state.
+            # Fixture passwords are entered over SSH, not on this console.
+            qmp_command(path, 'screendump', {'filename': str(WORK / 'public' / (name + '-display.ppm'))})
+        except (OSError, ValueError, RuntimeError) as error:
+            observation['error'] = redact(str(error))
+        (WORK / 'public' / (name + '-qmp.json')).write_text(json.dumps(observation, indent=2))
+
+
+def baseline_reboot(process):
+    previous = factory(2222, 'cat /proc/sys/kernel/random/boot_id')
+    try:
+        factory(2222, 'systemctl reboot', timeout=30)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        pass  # Boot-ID change below is the required evidence, not SSH closure.
+    deadline = time.monotonic() + 900
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            raise RuntimeError('QEMU exited during vanilla Ubuntu reboot.')
+        try:
+            observed = factory(2222, 'cat /proc/sys/kernel/random/boot_id', timeout=15)
+            uuid.UUID(observed)
+            if observed != previous:
+                wait_factory(2222, process)
+                REPORT['checks']['vanilla_ubuntu_reboot'] = True
+                return
+        except (subprocess.SubprocessError, ValueError):
+            pass
+        time.sleep(5)
+    raise RuntimeError('Vanilla Ubuntu did not return after reboot, before installer execution.')
 
 
 def outside_probe(port):
@@ -368,6 +409,8 @@ def acceptance():
     client = boot('client', 20, 2223)
     wait_factory(2222, target)
     wait_factory(2223, client)
+    stage('vanilla-ubuntu-reboot-before-installer')
+    baseline_reboot(target)
     baseline = outside_probe(22)
     if not all(baseline.values()):
         raise RuntimeError('Fixture outside IPv4/IPv6 link was not reachable before lockdown.')
@@ -490,6 +533,7 @@ if __name__ == '__main__':
         REPORT['status'] = 'failed'
         REPORT['error'] = redact(str(error))
         save_report()
+        vm_diagnostics()
         try:
             (WORK / 'public/listeners-at-failure.txt').write_text(
                 redact(factory(2222, 'ss -H -ltn; ss -H -lun', timeout=15)))

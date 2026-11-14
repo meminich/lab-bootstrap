@@ -19,6 +19,16 @@ SPEC.loader.exec_module(FIXTURE)
 
 
 class VmHarnessSafety(unittest.TestCase):
+    def test_qmp_observation_requires_matching_reply_and_rejects_errors(self):
+        spec = importlib.util.spec_from_file_location('fixture_qmp', ROOT / 'tests/vm/qmp.py')
+        qmp = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(qmp)
+        stream = io.BytesIO(b'{"event":"RESET"}\n{"id":1,"return":{"status":"running"}}\n')
+        self.assertEqual(qmp.read_reply(stream, 1), {'status': 'running'})
+        for data in (b'', b'{"id":1,"error":{"desc":"failed"}}\n'):
+            with self.assertRaises(RuntimeError):
+                qmp.read_reply(io.BytesIO(data), 1)
+
     def test_boot_id_parser_ignores_login_and_logout_text(self):
         tree = ast.parse((ROOT / 'tests/vm/guest_driver.py').read_text())
         function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'mark_json')

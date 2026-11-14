@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-15 — Isolasi masalah reboot emulator/OS awal
+
+- Run 43643713232 meluluskan hostname SSH, IPv4/IPv6 transport, tiga gate, Docker
+  privat, dan integritas rerun, tetapi reboot tetap offline setelah 900 detik.
+- Tambah reboot baseline Ubuntu polos sebelum installer dan observasi QMP/VGA
+  melalui socket Unix fixture. Tidak tambah timeout lagi atau reset paksa guest;
+  kegagalan baseline harus menghentikan uji sebelum menyalahkan installer.
+
 ## 2026-11-15 — Docker/rerun terbukti, koreksi asumsi DNS IPv6
 
 - Run 43638905586 meluluskan tiga gate, HTTP Docker privat/tidak bocor pada

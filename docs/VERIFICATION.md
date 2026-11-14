@@ -82,6 +82,13 @@ boleh dilabeli didukung. Branch/PR ini bukan rilis installer.
 
 ## Bukti VM parsial — 15 November 2026
 
+Run [43643713232](https://github.com/meminich/lab-bootstrap/actions/runs/43643713232)
+menguji commit `2ac8051e7f978a9406b022fce8d85e8ce5837b57`, payload sama. Semua gate,
+hostname SSH, transport IPv4/IPv6, Docker privat/tidak bocor, dan integritas rerun
+lulus. Reboot tetap tidak kembali setelah 900 detik; console berhenti di
+`Restarting system`, QEMU belum exit, client melihat target offline. Uji berikutnya
+memeriksa reboot Ubuntu polos dan mengambil observasi QMP/VGA; sebab belum pasti.
+
 Run [43638905586](https://github.com/meminich/lab-bootstrap/actions/runs/43638905586)
 menguji commit `ffb47659e0bd996e66fb728303488cd3ee3e94cc`, payload sama dengan digest
 di bawah. Selain tiga checkpoint, HTTP container melalui tailnet/tidak melalui
@@ -115,7 +122,7 @@ stream UFW). Dua kernel Ubuntu 22.04 berjalan dengan QEMU TCG dan Headscale priv
 
 Payload digest: `586b2b46155719ff36d9f5c0bd6511eabc8380cb38b940ea1132e9245351c8b6`.
 
-- **71 unit/regression tests lulus**: parser config, challenge/receipt kedaluwarsa
+- **72 unit/regression tests lulus**: parser config, challenge/receipt kedaluwarsa
   dan salah instance/user/run, koneksi baru per checkpoint, urutan gate/failure,
   UFW tidak reset/disable, manifest drift/symlink, guard legacy, serta bundle
   roundtrip/checksum dan build berulang identik. Installer dari paket yang

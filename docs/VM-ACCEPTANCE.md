@@ -34,6 +34,8 @@ from the existence of these scripts. No production Tailscale credentials require
 ## Test path
 
 1. Verify the SHA256-pinned official Ubuntu cloud image; boot two fresh overlays.
+   Before running the installer, reboot the vanilla target and require a changed
+   boot ID plus working factory SSH. Failure here isolates the VM/stock-OS lane.
 2. Use only generated fixture root SSH keys to establish factory access.
 3. Stage the **unchanged** candidate payload and run its real interactive installer.
 4. At its ordinary password/login pause, register the target in the private
@@ -67,6 +69,8 @@ Boot IDs use marked JSON/UUIDs, not the last line of an interactive transcript.
 TCG reboot observation allows 900 seconds, including shutdown and new kernel
 boot. The workflow budget is 90 minutes to leave room for sanitized artifact
 upload after a slow software-emulated install/reboot; no timeout implies success.
+Failures also record QMP run state and a VGA screen image through a Unix socket
+inside the fixture container. No network monitor port or memory/disk dump is used.
 
 ## Limits — not equivalent to the owner's account/provider
 
