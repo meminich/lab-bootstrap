@@ -1,48 +1,52 @@
 # VPS Lab Bootstrap
 
-Ubah VPS **Ubuntu fresh** jadi **lab siap pakai** — sekali jalan, interaktif.
-Hasilnya: akses cuma lewat Tailscale, port publik ditutup, Docker + struktur lab siap.
+Resep membangun ulang VPS lab pribadi. Target desain: dari `ssh root@IP-VPS`
+menjadi akses harian `ssh vpsadmin@vpslab`, lewat Tailscale.
 
----
+> **BELUM SIAP UNTUK INSTALASI.** Installer Ansible belum diimplementasikan.
+> Installer Bash lama diblokir karena temuan keselamatan. Jangan memakai versi
+> historis untuk melewati blokir ini. Belum ada rilis baru yang lolos tes VM.
 
-## Cara pakai (cukup copy-paste, terus ikuti di layar)
+## Yang sudah tersedia
 
-Di VPS baru, login sebagai **root**, lalu jalankan:
+- [Audit kode lama dan batas pemeriksaan](docs/AUDIT.md).
+- [Desain awal Ubuntu Server 22.04 LTS](docs/DESIGN.md).
+- [Rencana verifikasi dan syarat rilis](docs/VERIFICATION.md).
+- Template aturan host/workspace di `templates/`; **belum dipasang ke host**.
+- Source lama di `legacy/bootstrap.sh`, untuk referensi saja dan tidak bisa dijalankan.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/meminich/lab-bootstrap/main/bootstrap.sh | sudo bash
-```
+## Yang aman dijalankan sekarang
 
-> Atau download dulu: `curl -fsSL https://raw.githubusercontent.com/meminich/lab-bootstrap/main/bootstrap.sh -o bootstrap.sh`
-> lalu `sudo bash bootstrap.sh`.
-
-Terus **ikuti petunjuk di layar.** Biasanya cuma 2 aksi manual:
-
-1. **Login Tailscale** — buka link yang muncul di browser, login, klik Connect.
-2. **Tes akses** — di laptop jalankan `ssh vpsadmin@vpslab`. Bisa masuk? ketik `y`.
-
----
-
-## Yang dihasilkan
-
-- 🔒 Akses **hanya via Tailscale** (port publik ditutup, password SSH mati)
-- 🧱 Fondasi OS rapi (auto-patch keamanan, timezone, swap, cloud-init mati)
-- 🐳 **Docker** + struktur lab di `~/playground` (+ `_template`)
-- 📄 `AGENTS.md` — aturan lab, kebaca otomatis sama agent & manusia
-
----
-
-## Opsi
+Dari checkout repo, tanpa root:
 
 ```bash
-sudo bash bootstrap.sh --dry-run     # lihat rencana, tidak mengubah apa pun
-sudo bash bootstrap.sh --only 50     # jalankan 1 fase saja
-sudo bash bootstrap.sh --from 40     # mulai dari fase tertentu
-sudo bash bootstrap.sh --yes         # non-interaktif (pakai default)
+bash bootstrap.sh --dry-run
+python3 -B -m unittest discover -s tests -v
 ```
 
-## Catatan
+`--dry-run` hanya mencetak **rencana desain**, bukan simulasi Ansible. Tidak
+membaca `config.env`, menulis log/config, atau menjalankan perubahan host.
+Perintah instalasi final akan dipublikasikan bersama rilis teruji, dengan versi
+tetap dan checksum. Jangan mengandalkan URL `main` untuk rebuild yang konsisten.
 
-- **Data lab TIDAK ikut** di-restore — pulihkan dari **snapshot** kalau perlu.
-- Mau ubah nama host/user/port default? Bikin `config.env` (lihat `config.env.example`) atau isi lewat wizard saat menjalankan.
-- Detail lengkap aturan: lihat `AGENTS.md` di VPS setelah selesai.
+## Cara pakai yang dituju (belum tersedia)
+
+1. Fresh install Ubuntu Server **22.04 LTS** dari provider.
+2. Login `ssh root@IP-VPS`, download installer rilis teruji, lalu jalankan file itu.
+3. Konfirmasi pengaturan, buat password sudo, login Tailscale lewat browser.
+4. Dari terminal kedua, tes `ssh vpsadmin@vpslab` dan jalankan checkpoint.
+5. Baru tutup jalur publik; tes ulang, termasuk kemampuan sudo.
+
+Laptop harus terhubung ke Tailscale, MagicDNS berfungsi, dan kebijakan tailnet
+mengizinkan koneksi serta Tailscale SSH. Nama `vpslab` tidak boleh bertabrakan
+dengan perangkat lama; installer tidak menghapus perangkat atau mengubah kebijakan
+tailnet otomatis. Console Contabo harus tersedia sebelum mulai.
+
+Ubuntu 22.04 mendapat pemeliharaan keamanan standar sampai **Mei 2027**;
+setelah itu perlu ESM melalui Ubuntu Pro atau upgrade OS.
+
+## Batas lingkup
+
+Bootstrap hanya menyiapkan fondasi host dan workspace. Aplikasi, OpenCode/plugin,
+portal, serta pemulihan data dipasang lewat tahap terpisah. Bootstrap bukan backup;
+fresh clone repo ini tidak memulihkan data layanan.
