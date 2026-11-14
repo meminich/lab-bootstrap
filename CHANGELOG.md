@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-15 — Diagnostik MagicDNS acceptance
+
+- Run 43622487097 melewati preflight resume, tetapi client gagal resolve vpslab
+  sebelum koneksi SSH checkpoint. Belum ada bukti checkpoint positif/lockdown.
+- Tambah status mesh tersaring dan diagnostik resolver fixture; tunggu propagasi
+  DNS maksimal 90 detik. Tidak fallback ke IP, hosts file, atau receipt palsu.
+
 ## 2026-11-15 — Resume setelah Tailscale aktif
 
 - Tangani format `ss` IPv6 `[alamat]%interface:port`; regresi memakai format

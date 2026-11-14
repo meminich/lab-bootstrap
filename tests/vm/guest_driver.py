@@ -232,6 +232,44 @@ def enroll_target():
     REPORT['checks']['fixture_enrollment_without_production_credentials'] = True
 
 
+def mesh_diagnostics(label):
+    # Explicitly select non-secret fixture network fields, never daemon state/keys.
+    status_code = """import json,subprocess
+s=json.loads(subprocess.check_output(['tailscale','status','--json']))
+fields=('HostName','DNSName','TailscaleIPs','Online')
+print(json.dumps({'BackendState':s.get('BackendState'),'Health':s.get('Health'),
+ 'MagicDNSSuffix':s.get('MagicDNSSuffix'),
+ 'Self':{k:(s.get('Self') or {}).get(k) for k in fields},
+ 'Peer':[{k:p.get(k) for k in fields} for p in (s.get('Peer') or {}).values()]},indent=2))
+"""
+    for name, port in (('target', 2222), ('client', 2223)):
+        text = ''
+        try:
+            text = factory(port, py_command(status_code), timeout=30)
+            text += '\n' + factory(port, 'resolvectl status; cat /etc/resolv.conf; '
+                                   'getent ahosts vpslab; resolvectl query vpslab; '
+                                   'resolvectl query vpslab.fixture.test', timeout=30)
+        except (subprocess.SubprocessError, OSError) as error:
+            text += '\n' + str(error)
+            if isinstance(error, subprocess.CalledProcessError):
+                text += '\n' + (error.stdout or '') + (error.stderr or '')
+        (WORK / 'public' / (label + '-' + name + '-mesh.txt')).write_text(redact(text))
+
+
+def wait_magicdns():
+    deadline = time.monotonic() + 90
+    while True:
+        try:
+            factory(2223, 'getent ahosts vpslab', timeout=15)
+            REPORT['checks']['client_magicdns_resolves_target'] = True
+            return
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            if time.monotonic() >= deadline:
+                mesh_diagnostics('dns-failure')
+                raise RuntimeError('Client MagicDNS did not resolve vpslab; inspect mesh diagnostics.')
+            time.sleep(3)
+
+
 def installer_session(fail_first=False):
     executable = '/root/candidate/install.sh' if fail_first else '/usr/bin/python3 -I -B /opt/lab-bootstrap/source/labbootstrap/installer.py'
     command = ('bash ' if fail_first else '') + executable + ' --apply --experimental' + ('' if fail_first else ' --resume')
@@ -265,6 +303,7 @@ def installer_session(fail_first=False):
                     expected_stop = True
                     child.sendline('')
                     continue
+                wait_magicdns()
                 if purpose == 'after-lockdown':
                     probe = outside_probe(22)
                     if any(probe.values()):
@@ -329,6 +368,7 @@ def acceptance():
         raise RuntimeError('Missing receipt caused premature lockdown.')
     REPORT['checks']['missing_receipt_preserves_initial_access'] = True
     REPORT['listeners_after_prepare'] = factory(2222, 'ss -H -ltn; ss -H -lun')
+    mesh_diagnostics('after-prepare')
     stage('resume-and-three-genuine-checkpoints')
     installer_session(fail_first=False)
     receipt = mark_json(peer_sudo_shell(py_command(
