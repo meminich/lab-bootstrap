@@ -77,7 +77,7 @@ def peer(command, sudo=False, timeout=120, family=None):
     # Two distinct kernels: factory SSH reaches the client, then normal ssh uses
     # MagicDNS and the client's actual Tailscale interface to reach the target.
     if sudo:
-        command = "sudo -k -p '[fixture-sudo] ' -- " + command
+        command = "tty; sudo -k -p '[fixture-sudo] ' -- " + command
     inner = ['ssh', *(['-' + str(family)] if family in (4, 6) else []), '-tt', '-o', 'StrictHostKeyChecking=accept-new',
              '-o', 'UserKnownHostsFile=/root/.ssh/fixture_mesh_hosts',
              '-o', 'ConnectTimeout=15', '-o', 'ControlMaster=no',
@@ -86,6 +86,8 @@ def peer(command, sudo=False, timeout=120, family=None):
     child = pexpect.spawn('ssh', ssh_args(2223, outer, tty=True), encoding='utf-8',
                           codec_errors='replace', timeout=timeout, dimensions=(50, 240))
     child.setecho(False)
+    transcript = io.StringIO()
+    child.logfile_read = transcript
     try:
         if sudo:
             child.expect_exact('[fixture-sudo] ')
@@ -96,7 +98,12 @@ def peer(command, sudo=False, timeout=120, family=None):
         if child.exitstatus != 0:
             raise RuntimeError('Peer SSH command failed: ' + redact(text[-5000:]))
         return text
+    except (pexpect.EOF, pexpect.TIMEOUT) as error:
+        raise RuntimeError('Peer SSH stopped before completing interaction: '
+                           + redact(transcript.getvalue()[-8000:])) from error
     finally:
+        with (WORK / 'public/peer-interactions.txt').open('a') as log:
+            log.write('\n--- peer interaction ---\n' + redact(transcript.getvalue()[-12000:]))
         if child.isalive():
             child.close(force=True)
 

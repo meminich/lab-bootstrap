@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-15 — Diagnostik terminal SSH/sudo
+
+- Run 43627357056 membuktikan MagicDNS nama pendek sudah berhasil; interaksi
+  SSH/sudo berakhir sebelum prompt terbaca. Belum ada receipt checkpoint positif.
+- Simpan transkrip output peer tersanitasi (tanpa input password), laporkan EOF
+  lengkap, dan tampilkan `tty` sebelum sudo. Tidak mengubah policy autentikasi.
+
 ## 2026-11-15 — Diagnostik MagicDNS acceptance
 
 - Run 43625046658 menemukan `setLinkDomains: Too many search domains per link`.
