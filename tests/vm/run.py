@@ -27,6 +27,15 @@ def write(path, value, mode=0o600):
     path.chmod(mode)
 
 
+def fixture_subnet(networks):
+    used = [ipaddress.ip_network(item['Subnet']) for network in networks
+            for item in network.get('IPAM', {}).get('Config', []) if item.get('Subnet')]
+    for candidate in ipaddress.ip_network('172.16.0.0/12').subnets(new_prefix=24):
+        if not any(candidate.overlaps(existing) for existing in used):
+            return str(candidate)
+    raise RuntimeError('No unused private Docker subnet available.')
+
+
 def headscale_config(ip):
     return {
         'server_url': 'https://' + ip + ':8080', 'listen_addr': ip + ':8080',
@@ -102,7 +111,10 @@ def main(work):
         subprocess.run(['docker', 'build', '-t', image, '-f', str(ROOT / 'tests/vm/Dockerfile'),
                         str(ROOT / 'tests/vm')], check=True)
         stage = 'create-private-network'
-        command(['docker', 'network', 'create', network])
+        network_ids = command(['docker', 'network', 'ls', '-q']).splitlines()
+        networks = json.loads(command(['docker', 'network', 'inspect', *network_ids])) if network_ids else []
+        subnet = fixture_subnet(networks)
+        command(['docker', 'network', 'create', '--subnet', subnet, network])
         created_network = True
         subnet = json.loads(command(['docker', 'network', 'inspect', network]))[0]['IPAM']['Config'][0]['Subnet']
         ip = str(ipaddress.ip_network(subnet)[2])

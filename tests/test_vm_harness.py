@@ -13,6 +13,12 @@ SPEC.loader.exec_module(FIXTURE)
 
 
 class VmHarnessSafety(unittest.TestCase):
+    def test_explicit_subnet_avoids_existing_docker_ranges(self):
+        networks = [{'IPAM': {'Config': [{'Subnet': '172.16.0.0/16'},
+                                         {'Subnet': '172.17.0.0/16'},
+                                         {'Subnet': 'fd42::/64'}]}}]
+        self.assertEqual(FIXTURE.fixture_subnet(networks), '172.18.0.0/24')
+
     def test_refuses_current_vps_before_creating_files_or_docker_resources(self):
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary) / 'must-not-be-created'
