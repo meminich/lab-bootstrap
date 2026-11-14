@@ -77,11 +77,11 @@ def peer(command, sudo=False, timeout=120, family=None):
     # Two distinct kernels: factory SSH reaches the client, then normal ssh uses
     # MagicDNS and the client's actual Tailscale interface to reach the target.
     if sudo:
-        command = "tty; sudo -k -p '[fixture-sudo] ' -- " + command
+        command = "sudo -k -p '[fixture-sudo] ' -- " + command
     inner = ['ssh', *(['-' + str(family)] if family in (4, 6) else []), '-tt', '-o', 'StrictHostKeyChecking=accept-new',
              '-o', 'UserKnownHostsFile=/root/.ssh/fixture_mesh_hosts',
              '-o', 'ConnectTimeout=15', '-o', 'ControlMaster=no',
-             '-o', 'ControlPath=none', 'vpsadmin@vpslab', command]
+             '-o', 'ControlPath=none', 'vpsadmin@vpslab']
     outer = shlex.join(inner)
     child = pexpect.spawn('ssh', ssh_args(2223, outer, tty=True), encoding='utf-8',
                           codec_errors='replace', timeout=timeout, dimensions=(50, 240))
@@ -89,6 +89,12 @@ def peer(command, sudo=False, timeout=120, family=None):
     transcript = io.StringIO()
     child.logfile_read = transcript
     try:
+        # Exercise the documented human path: login shell first, then sudo.
+        # Tailscale SSH remote-command mode can have a PTY without a controlling
+        # terminal on Jammy, so tty(1) alone does not prove sudo can open /dev/tty.
+        child.sendline("stty -echo; printf '\\nLAB-SHELL-READY\\n'")
+        child.expect(r'\r?\nLAB-SHELL-READY\r?\n')
+        child.sendline("printf '\\n'; " + command + '; fixture_rc=$?; exit "$fixture_rc"')
         if sudo:
             child.expect_exact('[fixture-sudo] ')
             child.sendline(SECRETS['admin_password'])

@@ -1,11 +1,14 @@
 import importlib.util
 import ipaddress
+import ast
+import io
 import os
 import re
+import shlex
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +18,37 @@ SPEC.loader.exec_module(FIXTURE)
 
 
 class VmHarnessSafety(unittest.TestCase):
+    def test_peer_opens_login_shell_before_sudo_password_interaction(self):
+        # Load only this function; importing the executable driver would read
+        # generated fixture metadata and is deliberately not a host-safe API.
+        tree = ast.parse((ROOT / 'tests/vm/guest_driver.py').read_text())
+        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'peer')
+        child = MagicMock()
+        child.before = 'verifier output'
+        child.exitstatus = 0
+        child.isalive.return_value = False
+        pexpect = MagicMock()
+        pexpect.spawn.return_value = child
+        pexpect.EOF = EOFError
+        pexpect.TIMEOUT = TimeoutError
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            (work / 'public').mkdir()
+            namespace = {'shlex': shlex, 'io': io, 'pexpect': pexpect, 'WORK': work,
+                         'SECRETS': {'admin_password': 'generated-fixture-only'},
+                         'redact': lambda text: text.replace('generated-fixture-only', '[redacted]'),
+                         'ssh_args': lambda port, command, tty=False: [command]}
+            exec(compile(ast.Module(body=[function], type_ignores=[]), '<peer>', 'exec'), namespace)
+            self.assertEqual(namespace['peer']('/usr/local/sbin/lab-verify-access', sudo=True), 'verifier output')
+            outer = pexpect.spawn.call_args.args[1][0]
+            self.assertEqual(shlex.split(outer)[-1], 'vpsadmin@vpslab')
+            self.assertNotIn('sudo', outer)
+            sent = [call.args[0] for call in child.sendline.call_args_list]
+            self.assertIn('LAB-SHELL-READY', sent[0])
+            self.assertIn('sudo -k', sent[1])
+            self.assertNotIn('sudo -S', sent[1])
+            self.assertEqual(sent[2], 'generated-fixture-only')
+
     def test_fixture_reverse_dns_fits_jammy_resolved_domain_limit(self):
         prefix = ipaddress.ip_network(FIXTURE.headscale_config('172.30.0.2')['prefixes']['v4'])
         # Headscale v0.29.7 util.GenerateIPv4DNSRootDomain expands the next octet,

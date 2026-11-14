@@ -2,6 +2,10 @@
 
 ## 2026-11-15 — Diagnostik terminal SSH/sudo
 
+- Run 43629470570 menunjukkan PTY ada tetapi sudo tidak mendapat controlling
+  terminal pada remote-command SSH. Harness sekarang membuka login shell dahulu,
+  lalu mengetik command, sesuai alur manusia yang didokumentasikan. Password sudo
+  tetap wajib, tanpa `-S`, NOPASSWD, atau perubahan verifier produksi.
 - Run 43627357056 membuktikan MagicDNS nama pendek sudah berhasil; interaksi
   SSH/sudo berakhir sebelum prompt terbaca. Belum ada receipt checkpoint positif.
 - Simpan transkrip output peer tersanitasi (tanpa input password), laporkan EOF

@@ -41,6 +41,9 @@ from the existence of these scripts. No production Tailscale credentials require
 6. Resume the same installed source. Three separate actual client SSH sessions
    enter the real sudo password and invoke the production verifier. No fabricated
    receipt, environment-based verifier bypass, or NOPASSWD policy.
+   Each session opens an interactive login shell before typing sudo, matching
+   the documented human workflow; remote-command SSH on the tested Tailscale/
+   Jammy combination exposed a PTY without sudo's controlling terminal.
 7. Prove non-tailnet IPv4/IPv6 SSH is blocked. Deploy the generated demo container;
    prove HTTP through the mesh and no exposure on the non-tailnet interfaces.
 8. Create owned SQLite/document fixtures containing legacy placeholders. Rerun
