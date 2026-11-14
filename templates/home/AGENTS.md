@@ -1,7 +1,7 @@
 # Aturan VPS lab pribadi
 
-> Template untuk home admin. Belum menyatakan kondisi mesin sudah terverifikasi.
-> Installer baru belum menginstal template ini. Aturan repo bukan aturan host.
+> Aturan untuk home admin; ini kebijakan, bukan laporan status runtime.
+> Keberadaan file ini tidak membuktikan semua pemeriksaan mesin sudah lulus.
 
 ## Prinsip kerja
 

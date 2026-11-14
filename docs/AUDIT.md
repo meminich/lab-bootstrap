@@ -1,5 +1,10 @@
 # Audit lab-bootstrap — 14 November 2026
 
+> Audit awal di bawah mempertahankan temuan terhadap source lama. Implementasi v2
+> ditambahkan sesudahnya sebagai kandidat eksperimental: lihat DESIGN,
+> CHECKPOINT, dan VERIFICATION. Ini tidak mengubah body legacy menjadi aman dan
+> tidak berarti instalasi VM/Tailscale/reboot sudah diuji.
+
 ## Lingkup dan bukti
 
 Source lama pada commit `20ae16e3f1b17ac868ac45ad3065ace289e8c3ba`:

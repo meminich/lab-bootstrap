@@ -1,7 +1,9 @@
 # Evidence path dan syarat rilis
 
-Status: saat ini **hanya** guard/dokumentasi/template yang diuji. Playbook baru
-belum ada; tidak ada klaim pengujian instalasi Ubuntu atau jaringan nyata.
+Status: installer/playbook **eksperimental** tersedia. Guard, validasi config,
+receipt, urutan gate/firewall, manifest, dependency lock, syntax Ansible, serta
+render template dapat diuji tanpa privilege. Tidak ada klaim pengujian instalasi
+Ubuntu atau jaringan nyata. Protokol dan threat model: [CHECKPOINT](CHECKPOINT.md).
 
 ## Klaim, pemilik, dan bukti minimum
 
@@ -20,6 +22,7 @@ belum ada; tidak ada klaim pengujian instalasi Ubuntu atau jaringan nyata.
 ```bash
 bash -n bootstrap.sh
 bash -n legacy/bootstrap.sh
+bash -n install.sh
 python3 -B -m unittest discover -s tests -v
 git diff --check
 ```
@@ -27,6 +30,26 @@ git diff --check
 Tidak butuh root, Docker socket, akses layanan aktif, package install, atau
 rahasia. Test suite membuat fixture sementara saja, lalu membersihkan fixture
 sendiri. Ini bukan verifikasi efek jaringan atau body arsip lama.
+
+Untuk syntax/render/dependency checks dengan controller terisolasi:
+
+```bash
+python3 -B scripts/check_playbooks.py --tooling-dir /tmp/opencode/lab-bootstrap-ci
+```
+
+Perintah ini mengunduh tooling/dependency yang dikunci hash ke direktori eksplisit,
+tidak memasang paket OS, menjalankan playbook apply, atau memakai Docker socket.
+Jika Docker CLI tersedia, tes Compose hanya menjalankan `config`, bukan `up`.
+
+Paket kandidat untuk review/tes (bukan rilis produksi):
+
+```bash
+python3 -B scripts/build_candidate.py --output /tmp/opencode/lab-bootstrap-candidate
+```
+
+Artifact berisi seluruh payload, manifest file SHA256, status production_ready=false,
+dan checksum archive. Tidak mengandung data runtime/secret atau source legacy.
+Checksum konsistensi bukan pengganti autentikasi publisher; rilis resmi belum dibuat.
 
 ## Matriks wajib sebelum rilis installer baru
 
@@ -56,3 +79,30 @@ arsitektur, hasil tes per klaim, batas yang belum diuji, checksum artifact,
 instruksi recovery console, serta review checkpoint privilege. Secret tidak boleh
 masuk receipt, log, screenshot, atau artifact. Arsitektur yang belum diuji tidak
 boleh dilabeli didukung. Branch/PR ini bukan rilis installer.
+
+## Bukti lokal — 14 November 2026
+
+Payload digest: `f47d92cfbd0054d95c8be55400febacf23a1260ea8284b2491045cd0a49ab3f3`.
+
+- **59 unit/regression tests lulus**: parser config, challenge/receipt kedaluwarsa
+  dan salah instance/user/run, koneksi baru per checkpoint, urutan gate/failure,
+  UFW tidak reset/disable, manifest drift/symlink, guard legacy, serta bundle
+  roundtrip/checksum dan build berulang identik. Installer dari paket yang
+  diekstrak benar-benar menjalankan plan tanpa membaca config.env atau membuat
+  file tambahan, termasuk bytecode __pycache__ (wrapper dan direct Python entry).
+  Readiness Docker juga menolak metadata IP yang belum benar-benar terpasang di
+  interface kernel; perilaku API sebenarnya tetap perlu uji boot pada VM.
+- **4 template/Compose checks lulus**: seluruh template dirender, YAML valid,
+  mapping IP wajib, tanpa container_name tetap; Docker Compose `config` menerima
+  env lengkap dan menolak IP kosong. Docker host diarahkan ke socket yang tidak
+  ada dan config CLI kosong, sehingga tes tidak memakai daemon/credential nyata.
+- **3 playbook lolos syntax-check** dengan ansible-core terkunci. Tidak ada
+  playbook apply yang dijalankan.
+- Bootstrap tooling dari direktori kosong diuji: uv wheel/binary SHA256, managed
+  Python dan 9 dependency controller dipasang di direktori temporer eksplisit.
+  Tidak mengganti Python OS atau memasang paket OS.
+
+Ini bukti lokal kode/packaging, **bukan** bukti install Ubuntu 22.04 atau keamanan
+jaringan. CI Ubuntu 22.04 menjalankan suite/syntax yang sama, bukan install host.
+Belum ada uji VM fresh, PAM/Tailscale login nyata, probe dari luar tailnet, reboot,
+atau percobaan recovery console. Tidak ada rilis produksi atau perubahan VPS aktif.

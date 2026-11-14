@@ -20,4 +20,9 @@ Template aturan VPS ada di `templates/`; jangan menerapkannya ke mesin kerja.
   `python3 -B -m unittest discover -s tests -v`.
 - Tes statis bukan bukti jaringan, keamanan, atau kesiapan rilis. Nyatakan batas
   hasil tes dan jangan menyebut installer siap sebelum syarat rilis terpenuhi.
+- Implementasi v2 ada di install.sh/labbootstrap/playbooks, tetap eksperimental.
+  Syntax/render checks: `python3 -B scripts/check_playbooks.py --tooling-dir <temp>`;
+  unduh dependency hanya ke direktori tooling eksplisit, bukan mengganti Python OS.
+- Paket kandidat dibuat lewat scripts/build_candidate.py ke direktori output
+  eksplisit. Jangan menerbitkan rilis produksi atau menambahkan VM berbayar tanpa izin.
 - Perubahan repo dicatat di CHANGELOG.md repo, bukan changelog host.

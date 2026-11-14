@@ -69,7 +69,7 @@ class EntryPointSafety(unittest.TestCase):
     def test_help_succeeds_without_tools_or_config(self):
         result = self.run_script("--help")
         self.assertEqual(result.returncode, 0)
-        self.assertIn("BELUM tersedia", result.stdout)
+        self.assertIn("BELUM dirilis", result.stdout)
 
     def test_short_help(self):
         self.assertEqual(self.run_script("-h").returncode, 0)
@@ -115,7 +115,7 @@ class EntryPointSafety(unittest.TestCase):
         self.assertEqual(self.run_script(legacy=True, piped=True).returncode, 1)
 
     def test_shell_syntax(self):
-        for path in ("bootstrap.sh", "legacy/bootstrap.sh"):
+        for path in ("bootstrap.sh", "legacy/bootstrap.sh", "install.sh", "templates/access-helper.sh"):
             with self.subTest(path=path):
                 result = subprocess.run(
                     [BASH, "-n", str(ROOT / path)], capture_output=True, text=True,
@@ -142,8 +142,7 @@ class DocumentationContract(unittest.TestCase):
 
     def test_templates_are_not_host_status_reports(self):
         host = self.text("templates/home/AGENTS.md")
-        self.assertIn("Template", host)
-        self.assertIn("belum", host.lower())
+        self.assertIn("bukan laporan status runtime", host)
         for stale_claim in (
             "cloud-init dimatikan", "Tailscale SSH aktif", "Swap aktif",
             "tanpa auto-restart", "100.123.138.28", "100.64.0.1",
@@ -181,7 +180,7 @@ class DocumentationContract(unittest.TestCase):
     def test_design_requires_access_gate_and_release_evidence(self):
         design = self.text("docs/DESIGN.md")
         verification = self.text("docs/VERIFICATION.md")
-        self.assertIn("belum diimplementasikan", design)
+        self.assertIn("eksperimental", design)
         self.assertIn("--yes", design)
         self.assertIn("root-owned", design)
         self.assertIn("belum diuji", verification)

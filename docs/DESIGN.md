@@ -1,10 +1,11 @@
 # Desain v2 — Ubuntu Server 22.04 LTS
 
-Status: **spesifikasi, belum diimplementasikan**. Default desain satu tempat:
+Status: **implementasi eksperimental tersedia, belum lolos tes VM/client/reboot**.
+Default desain satu tempat (diselaraskan dengan `CONFIG_DEFAULTS` di kode):
 
 | Pengaturan | Default |
 |---|---|
-| OS | Ubuntu Server 22.04 LTS (amd64/arm64; masing-masing butuh bukti uji) |
+| OS | Ubuntu Server 22.04 LTS amd64; arm64 ditolak, belum didukung |
 | User | vpsadmin |
 | Hostname | vpslab |
 | Timezone | Asia/Jakarta |
@@ -25,8 +26,10 @@ login via browser. Pertahankan terminal root sampai selesai.
 Installer kecil menyiapkan Ansible pada virtualenv terpisah di path host yang
 dimiliki installer, lalu menjalankan playbook dengan koneksi lokal dan interpreter
 yang benar. Tooling provisioning adalah fondasi host, bukan aplikasi lab. Dependency
-dan collection dikunci versi dengan checksum; tidak mengikuti branch upstream
-bergerak. Tidak perlu daemon, panel, scheduler, atau controller laptop.
+controller dikunci versi dengan checksum; versi awal memakai Ansible builtin saja,
+tanpa collection Galaxy tambahan. Python controller terpisah karena Python 3.10
+bawaan Jammy terlalu lama untuk Ansible yang masih didukung. Tidak perlu daemon,
+panel, scheduler, atau controller laptop.
 
 Konfigurasi baru berupa data dengan schema dan allowlist, tidak di-source atau
 di-eval. Path absolut divalidasi; tidak menerima arbitrary executable lookup/Jinja
@@ -50,10 +53,10 @@ sebagai default identitas. Tidak otomatis membaca config dari current directory.
    Pemeriksaan di sesi admin baru mengikat challenge sekali-pakai ke versi setup,
    user, sesi SSH, sumber/destinasi Tailscale, serta instance. Receipt disimpan
    root-owned dan terbatas waktu; user biasa tidak boleh menulis receipt langsung.
-   Desain validator privilese harus direview sebelum implementasi; tidak ada
+   Detail validator dan batas kepercayaan ada di `CHECKPOINT.md`; tidak ada
    generic sudo wrapper, arbitrary command/path, atau token di log. Bukti ini
    mencegah salah konfirmasi, bukan melindungi dari pemilik/root yang berniat bypass.
-   Pemilik membuktikan sudo dari sesi itu juga. `--yes` tidak boleh melewati gate.
+   Pemilik membuktikan sudo dari sesi itu juga. `--yes` tidak tersedia.
 5. **Lockdown:** stage config SSH, backup path spesifik, validasi sintaks dan effective
    config sebelum apply/reload. Konvergensi firewall IPv4/IPv6 hanya setelah gate.
    Jangan mengklaim publik tertutup karena default deny saja. Cek socket activation
@@ -86,5 +89,6 @@ sebagai default identitas. Tidak otomatis membaca config dari current directory.
   bootstrap. README hanya menautkan proses terpisah setelah proses itu tersedia.
 - Tidak ada auto-prune, auto-reboot, mount data layanan lain, atau eksposur publik.
 - Release dipin dan dapat dibangun ulang. Update tooling provisioning berbeda
-  dari menjalankan ulang bootstrap. Detail implementasi/struktur role ditetapkan
-  sesudah review desain, bukan dianggap telah ada di repository ini.
+  dari menjalankan ulang bootstrap. Implementasi awal menggunakan tiga playbook
+  builtin (`prepare`, `lockdown`, `foundation`) dan driver lokal, bukan collection
+  besar. `scripts/build_candidate.py` membuat paket review, bukan rilis produksi.

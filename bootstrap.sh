@@ -6,10 +6,11 @@ case "${1:-}" in
   --help|-h)
     [[ $# -eq 1 ]] || { echo 'Gunakan --help atau --dry-run saja.' >&2; exit 2; }
     printf '%s\n' \
-      'VPS Lab Bootstrap — installer baru BELUM tersedia.' \
+      'VPS Lab Bootstrap — installer baru BELUM dirilis untuk produksi.' \
       'Target desain: Ubuntu Server 22.04 LTS.' \
       'bash bootstrap.sh --dry-run : lihat desain, tanpa perubahan.' \
-      'Script lama diblokir; lihat docs/AUDIT.md dan docs/DESIGN.md.'
+      'Installer v2 eksperimental: install.sh. Script lama tetap diblokir.' \
+      'Lihat docs/AUDIT.md dan docs/DESIGN.md.'
     ;;
   --dry-run)
     [[ $# -eq 1 ]] || { echo 'Mode rencana tidak menerima opsi lain.' >&2; exit 2; }
@@ -25,7 +26,7 @@ case "${1:-}" in
     ;;
   *)
     printf '%s\n' \
-      'STOP: installer baru belum dibuat dan diuji.' \
+      'STOP: installer baru belum lolos seluruh pengujian rilis.' \
       'Script lama memiliki risiko perubahan data dan akses server.' \
       'Tidak ada konfigurasi host yang diubah. Baca README.md.' >&2
     exit 1

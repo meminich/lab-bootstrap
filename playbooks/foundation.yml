@@ -1,0 +1,217 @@
+---
+- name: Configure foundation and workspace after post-lockdown SSH verification
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  pre_tasks:
+    - name: Refuse unsupported target/check mode
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == 'Ubuntu'
+          - ansible_distribution_version == '22.04'
+          - ansible_architecture == 'x86_64'
+          - not ansible_check_mode
+    - name: Verify fresh after-lockdown receipt before foundation changes
+      ansible.builtin.command:
+        argv: [/usr/bin/python3, -I, -B, "{{ source_dir }}/labbootstrap/gate.py", --foundation]
+      changed_when: false
+  tasks:
+    - name: Check whether Docker Engine existed before this phase
+      ansible.builtin.stat:
+        path: /usr/bin/dockerd
+      register: previous_docker
+    - name: Upgrade packages while the installer survives SSH reconnects in tmux
+      ansible.builtin.apt:
+        upgrade: safe
+        update_cache: true
+    - name: Install base tools and automatic security updater
+      ansible.builtin.apt:
+        name: [unattended-upgrades, git, jq, htop, unzip, rsync, ncdu]
+        state: present
+    - name: Configure automatic security updates without automatic reboot
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/99-lab-bootstrap
+        content: |
+          // Managed by lab-bootstrap. Package updates may restart services.
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+          Unattended-Upgrade::Automatic-Reboot "false";
+          #clear Unattended-Upgrade::Allowed-Origins;
+          Unattended-Upgrade::Allowed-Origins {
+            "${distro_id}:${distro_codename}-security";
+          };
+        mode: '0644'
+    - name: Enable APT timers
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop: [apt-daily.timer, apt-daily-upgrade.timer]
+    - name: Read current timezone
+      ansible.builtin.command: timedatectl show --property=Timezone --value
+      changed_when: false
+      register: current_timezone
+    - name: Set requested timezone only when changed
+      ansible.builtin.command:
+        argv: [timedatectl, set-timezone, "{{ timezone }}"]
+      when: current_timezone.stdout != timezone
+      changed_when: true
+    - name: Read active swap without touching existing files
+      ansible.builtin.command: swapon --show --noheadings
+      changed_when: false
+      register: active_swap
+    - name: Check whether /swapfile exists (including symlinks)
+      ansible.builtin.stat:
+        path: /swapfile
+        follow: false
+      register: swap_file
+    - name: Create swap only if no swap/file already exists
+      when:
+        - swap_gib | int > 0
+        - active_swap.stdout | trim | length == 0
+        - not swap_file.stat.exists
+        - not swap_file.stat.islnk | default(false)
+      block:
+        - name: Read free space
+          ansible.builtin.command: df --output=avail -B1 /
+          changed_when: false
+          register: free_disk
+        - name: Require requested swap size plus 2 GiB safety margin
+          ansible.builtin.assert:
+            that: (free_disk.stdout_lines[-1] | trim | int) > ((swap_gib | int + 2) * 1073741824)
+        - name: Allocate new swap file only
+          ansible.builtin.command:
+            argv: [fallocate, -l, "{{ swap_gib }}G", /swapfile]
+            creates: /swapfile
+          register: allocated_swap
+        - name: Protect newly allocated file
+          ansible.builtin.file:
+            path: /swapfile
+            mode: '0600'
+            owner: root
+            group: root
+          when: allocated_swap.changed
+        - name: Initialize only the file just allocated by this run
+          ansible.builtin.command: mkswap /swapfile
+          when: allocated_swap.changed
+          changed_when: true
+        - name: Activate newly created swap
+          ansible.builtin.command: swapon /swapfile
+          when: allocated_swap.changed
+          changed_when: true
+        - name: Persist the new swap entry
+          ansible.builtin.lineinfile:
+            path: /etc/fstab
+            line: /swapfile none swap sw 0 0
+          when: allocated_swap.changed
+    - name: Leave pre-existing inactive swap files untouched
+      ansible.builtin.debug:
+        msg: Existing /swapfile is inactive; not overwriting or initializing it. Review manually.
+      when:
+        - swap_file.stat.exists
+        - active_swap.stdout | trim | length == 0
+    - name: Create Docker configuration directory
+      ansible.builtin.file:
+        path: /etc/docker
+        state: directory
+        mode: '0755'
+    - name: Configure Docker before first installation/start
+      ansible.builtin.copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "log-driver": "json-file",
+            "log-opts": {"max-size": "10m", "max-file": "3"},
+            "live-restore": true
+          }
+        mode: '0644'
+      notify: Restart Docker for changed config
+    - name: Create Docker systemd drop-in directory
+      ansible.builtin.file:
+        path: /etc/systemd/system/docker.service.d
+        state: directory
+        mode: '0755'
+    - name: Require Tailscale bind IP before Docker can start after reboot
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/docker.service.d/10-lab-bootstrap.conf
+        content: |
+          [Unit]
+          Wants=tailscaled.service
+          After=tailscaled.service
+          [Service]
+          ExecStartPre=/usr/bin/python3 -I -B /opt/lab-bootstrap/source/labbootstrap/wait_tailnet.py
+        mode: '0644'
+      notify: Restart Docker for changed config
+    - name: Install checksum-pinned upstream Docker signing key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/lab-docker.asc
+        checksum: "sha256:{{ docker_key_sha256 }}"
+        mode: '0644'
+    - name: Configure signed upstream Docker repository
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/lab-docker.list
+        content: "deb [arch=amd64 signed-by=/etc/apt/keyrings/lab-docker.asc] https://download.docker.com/linux/ubuntu jammy stable\n"
+        mode: '0644'
+    - name: Install Docker Engine and Compose v2 plugin
+      ansible.builtin.apt:
+        name: [docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin, docker-compose-plugin]
+        state: present
+        update_cache: true
+    - name: Enable Docker (no automatic deployment of applications)
+      ansible.builtin.systemd_service:
+        name: docker
+        daemon_reload: true
+        enabled: true
+        state: started
+    - name: Grant Docker group membership (root-equivalent, explicitly approved)
+      ansible.builtin.user:
+        name: "{{ admin_user }}"
+        groups: docker
+        append: true
+    - name: Create only the new workspace/template directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: '0755'
+      loop:
+        - "/home/{{ admin_user }}/playground"
+        - "/home/{{ admin_user }}/playground/_template"
+        - "/home/{{ admin_user }}/playground/_template/data"
+    - name: Install canonical rules in admin home (not root, no harness integration)
+      ansible.builtin.copy:
+        src: "{{ source_dir }}/templates/home/AGENTS.md"
+        dest: "/home/{{ admin_user }}/AGENTS.md"
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: '0644'
+    - name: Install thin workspace rules
+      ansible.builtin.copy:
+        src: "{{ source_dir }}/templates/playground/AGENTS.md"
+        dest: "/home/{{ admin_user }}/playground/AGENTS.md"
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: '0644'
+    - name: Render only explicitly listed new workspace files
+      ansible.builtin.template:
+        src: "{{ source_dir }}/templates/workspace/{{ item.src }}"
+        dest: "/home/{{ admin_user }}/playground/{{ item.dest }}"
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: "{{ item.mode }}"
+      loop:
+        - {src: README.md.j2, dest: README.md, mode: '0644'}
+        - {src: compose.yml.j2, dest: _template/compose.yaml, mode: '0644'}
+        - {src: env.j2, dest: _template/.env.example, mode: '0600'}
+        - {src: gitignore.j2, dest: _template/.gitignore, mode: '0644'}
+        - {src: service.md.j2, dest: _template/README.md, mode: '0644'}
+        - {src: index.html.j2, dest: _template/data/index.html, mode: '0644'}
+  handlers:
+    - name: Restart Docker for changed config
+      ansible.builtin.systemd_service:
+        name: docker
+        daemon_reload: true
+        state: restarted
+      when: previous_docker.stat.exists

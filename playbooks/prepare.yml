@@ -1,0 +1,82 @@
+---
+- name: Prepare identity and Tailscale without locking public access
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  pre_tasks:
+    - name: Require supported target and real apply
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == 'Ubuntu'
+          - ansible_distribution_version == '22.04'
+          - ansible_architecture == 'x86_64'
+          - not ansible_check_mode
+        fail_msg: Use installer preflight/plan; this play targets Ubuntu 22.04 amd64 only.
+  tasks:
+    - name: Install minimal host prerequisites (no upgrade yet)
+      ansible.builtin.apt:
+        name: [sudo, curl, ca-certificates, openssh-server, ufw, tmux]
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+    - name: Create admin with normal password-based sudo policy
+      ansible.builtin.user:
+        name: "{{ admin_user }}"
+        home: "/home/{{ admin_user }}"
+        shell: /bin/bash
+        groups: sudo
+        append: true
+        create_home: true
+    - name: Set hostname
+      ansible.builtin.hostname:
+        name: "{{ hostname }}"
+    - name: Manage only the host's own loopback entry
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.1\.1\s'
+        line: "127.0.1.1 {{ hostname }}"
+    - name: Ensure cloud-init drop-in directory exists (do not disable cloud-init)
+      ansible.builtin.file:
+        path: /etc/cloud/cloud.cfg.d
+        state: directory
+        mode: '0755'
+    - name: Preserve hostname without changing provider networking
+      ansible.builtin.copy:
+        dest: /etc/cloud/cloud.cfg.d/99-lab-bootstrap-hostname.cfg
+        content: "# Managed by lab-bootstrap\npreserve_hostname: true\n"
+        owner: root
+        group: root
+        mode: '0644'
+    - name: Ensure APT keyring directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+    - name: Install checksum-pinned Tailscale signing key
+      ansible.builtin.get_url:
+        url: https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg
+        dest: /etc/apt/keyrings/lab-tailscale.gpg
+        checksum: "sha256:{{ tailscale_key_sha256 }}"
+        mode: '0644'
+    - name: Configure signed upstream Tailscale repository for Jammy
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/lab-tailscale.list
+        content: "deb [signed-by=/etc/apt/keyrings/lab-tailscale.gpg] https://pkgs.tailscale.com/stable/ubuntu jammy main\n"
+        mode: '0644'
+    - name: Install Tailscale
+      ansible.builtin.apt:
+        name: tailscale
+        state: present
+        update_cache: true
+    - name: Enable Tailscale daemon (SSH enrollment happens interactively)
+      ansible.builtin.systemd_service:
+        name: tailscaled
+        state: started
+        enabled: true
+    - name: Install fixed-purpose checkpoint command without sudoers exceptions
+      ansible.builtin.copy:
+        src: "{{ source_dir }}/templates/access-helper.sh"
+        dest: /usr/local/sbin/lab-verify-access
+        owner: root
+        group: root
+        mode: '0755'
