@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-14 — Harness fresh VM tanpa kredensial produksi
+
+- Tambahkan workflow disposable dua VM Ubuntu 22.04 dan Headscale HTTPS privat,
+  dengan image/checksum terkunci dan kredensial fixture baru.
+- Jalur uji mencakup missing-receipt failure, resume, tiga SSH/sudo nyata, probe
+  IPv4/IPv6 non-tailnet, container privat, integritas data, dan reboot kernel.
+- Tidak memakai tailnet pemilik, provider API, VM berbayar, atau menjalankan
+  installer pada VPS aktif. Hasil belum boleh dianggap lulus sebelum run selesai.
+- Batas: tidak membuktikan browser login SaaS, policy akun pemilik, routing publik
+  Contabo, atau recovery console. Detail: docs/VM-ACCEPTANCE.md.
+
 ## 2026-11-14 — Implementasi kandidat Ansible v2 (eksperimental)
 
 - Tambahkan installer interaktif untuk Ubuntu 22.04 amd64, Ansible lokal dengan

@@ -172,7 +172,8 @@ def validate_receipt(receipt, challenge, state, current_identity, now=None):
     if not receipt.get('peer_id') or not receipt.get('peer_login'):
         raise SafetyError('Receipt tidak memiliki identitas peer.')
     source, destination = connection_tuple(receipt.get('connection', ''))
-    if destination != state.get('tailscale_ip') or source == destination:
+    destinations = state.get('tailscale_ips', [state.get('tailscale_ip')])
+    if destination not in destinations or source == destination:
         raise SafetyError('Receipt menuju host yang salah.')
     if ' '.join(receipt['connection'].split()) in challenge.get('previous_connections', []):
         raise SafetyError('Buka sesi SSH baru; sesi lama tidak membuktikan akses setelah perubahan.')

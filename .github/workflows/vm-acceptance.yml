@@ -1,0 +1,42 @@
+name: Fresh Ubuntu VM acceptance
+
+on:
+  push:
+    branches: [audit/bootstrap-safety-and-rules]
+    paths:
+      - tests/vm/**
+      - labbootstrap/**
+      - playbooks/**
+      - templates/**
+      - install.sh
+      - requirements.lock
+      - toolchain.json
+      - .github/workflows/vm-acceptance.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vm-acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  disposable-vms:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout candidate (no retained GitHub credentials)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Run isolated two-VM acceptance (KVM if available, TCG otherwise)
+        run: /usr/bin/python3 -B tests/vm/run.py --work "$RUNNER_TEMP/lab-bootstrap-vm"
+      - name: Upload only sanitized reports, never keys/disks/seeds
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: vm-acceptance-${{ github.sha }}
+          path: ${{ runner.temp }}/lab-bootstrap-vm/public/
+          if-no-files-found: warn
+          retention-days: 7

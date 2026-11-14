@@ -1,0 +1,6 @@
+{
+  "ubuntu_image_url": "https://cloud-images.ubuntu.com/jammy/20261106/jammy-server-cloudimg-amd64.img",
+  "ubuntu_image_sha256": "f77bc6d59cb8deaa9657095736b5f5003f7705b47055f01823459715c967de6a",
+  "headscale_image": "headscale/headscale@sha256:11f81665e842809db9fe3006a38c56a66e968baa5abd4bac498e86445572b970",
+  "headscale_version": "0.29.7"
+}

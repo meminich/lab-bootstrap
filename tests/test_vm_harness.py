@@ -1,0 +1,43 @@
+import importlib.util
+import os
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SPEC = importlib.util.spec_from_file_location('vm_fixture_host', ROOT / 'tests/vm/run.py')
+FIXTURE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(FIXTURE)
+
+
+class VmHarnessSafety(unittest.TestCase):
+    def test_refuses_current_vps_before_creating_files_or_docker_resources(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary) / 'must-not-be-created'
+            with patch.dict(os.environ, {'GITHUB_ACTIONS': 'false'}), \
+                    patch.object(FIXTURE.subprocess, 'run') as run:
+                with self.assertRaises(RuntimeError):
+                    FIXTURE.main(work)
+                run.assert_not_called()
+                self.assertFalse(work.exists())
+
+    def test_control_plane_has_no_public_derp_or_logtail(self):
+        config = FIXTURE.headscale_config('172.30.0.2')
+        self.assertEqual(config['derp']['urls'], [])
+        self.assertFalse(config['derp']['auto_update_enabled'])
+        self.assertFalse(config['logtail']['enabled'])
+        self.assertTrue(config['server_url'].startswith('https://'))
+        self.assertEqual(config['listen_addr'], '172.30.0.2:8080')
+
+    def test_guest_image_is_dated_and_sha256_pinned(self):
+        import json
+        lock = json.loads((ROOT / 'tests/vm/fixtures.lock.json').read_text())
+        self.assertNotIn('/current/', lock['ubuntu_image_url'])
+        self.assertEqual(len(lock['ubuntu_image_sha256']), 64)
+        self.assertIn('@sha256:', lock['headscale_image'])
+
+
+if __name__ == '__main__':
+    unittest.main()

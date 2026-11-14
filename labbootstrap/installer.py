@@ -269,6 +269,7 @@ def connect_tailscale(state):
     if previous and previous != addresses[0]:
         raise SafetyError('IP Tailscale berubah saat resume; perlu review binding.')
     state['tailscale_ip'] = addresses[0]
+    state['tailscale_ips'] = [ip for ip in status.get('TailscaleIPs', []) if tailnet_ip(ip)]
     atomic_json(STATE_DIR / 'state.json', state)
 
 

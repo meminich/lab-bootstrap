@@ -117,6 +117,14 @@ class CheckpointTests(unittest.TestCase):
         result = common.connection_tuple('fd7a:115c:a1e0::1 5555 fd7a:115c:a1e0::2 22')
         self.assertEqual(result[1], 'fd7a:115c:a1e0::2')
 
+    def test_ipv6_receipt_accepts_this_hosts_assigned_ipv6_address(self):
+        state = {**self.state, 'tailscale_ips': ['100.100.0.2', 'fd7a:115c:a1e0::2']}
+        receipt = {**self.receipt, 'connection': 'fd7a:115c:a1e0::1 5555 fd7a:115c:a1e0::2 22'}
+        common.validate_receipt(receipt, self.challenge, state, self.identity, 1100)
+        with self.assertRaises(common.SafetyError):
+            common.validate_receipt({**receipt, 'connection': 'fd7a:115c:a1e0::1 5555 fd7a:115c:a1e0::9 22'},
+                                    self.challenge, state, self.identity, 1100)
+
 
 class FirewallTests(unittest.TestCase):
     def test_recovery_allowance_and_enable_precede_public_rule_removal(self):

@@ -103,3 +103,7 @@ repository bertanda tangan agar mendapat patch; versi terpasang dapat berubah
 antarwaktu. Ini resep rebuild, **bukan jaminan image OS bit-for-bit identik**.
 
 Daftar bukti yang sudah/belum ada: [VERIFICATION](docs/VERIFICATION.md).
+
+Tes VM tanpa kredensial produksi memakai [jaringan fixture terisolasi](docs/VM-ACCEPTANCE.md)
+di runner GitHub sementara. Hasilnya tidak boleh disamakan dengan login browser
+Tailscale milik pemilik atau pengujian routing/provider Contabo.

@@ -21,7 +21,8 @@ def build(output):
     archive = output / (prefix + '.tar.gz')
     files = {name: path.read_bytes() for name, path in source_files(ROOT)}
     for name in ('README.md', 'CHANGELOG.md', 'bootstrap.sh', 'docs/AUDIT.md',
-                 'docs/DESIGN.md', 'docs/VERIFICATION.md', 'docs/CHECKPOINT.md'):
+                 'docs/DESIGN.md', 'docs/VERIFICATION.md', 'docs/CHECKPOINT.md',
+                 'docs/VM-ACCEPTANCE.md'):
         path = ROOT / name
         if path.is_symlink() or not path.resolve().is_relative_to(ROOT.resolve()):
             raise RuntimeError('Artifact refuses symlink/out-of-tree documentation')
