@@ -82,6 +82,12 @@ boleh dilabeli didukung. Branch/PR ini bukan rilis installer.
 
 ## Bukti VM parsial — 15 November 2026
 
+Run [43649254705](https://github.com/meminich/lab-bootstrap/actions/runs/43649254705)
+menguji commit `70cf5a77d596face48b5e6a434be09e5be403a5c`: Ubuntu polos tidak kembali
+dari reboot sebelum installer dipanggil. QMP running, VGA belum terinisialisasi.
+Ini mengisolasi kegagalan ke lane VM/stock OS, bukan bukti installer menyebabkan
+reboot gagal. Tools emulator diperbarui; gate baseline dan pasca-install tetap wajib.
+
 Run [43643713232](https://github.com/meminich/lab-bootstrap/actions/runs/43643713232)
 menguji commit `2ac8051e7f978a9406b022fce8d85e8ce5837b57`, payload sama. Semua gate,
 hostname SSH, transport IPv4/IPv6, Docker privat/tidak bocor, dan integritas rerun
@@ -122,7 +128,7 @@ stream UFW). Dua kernel Ubuntu 22.04 berjalan dengan QEMU TCG dan Headscale priv
 
 Payload digest: `586b2b46155719ff36d9f5c0bd6511eabc8380cb38b940ea1132e9245351c8b6`.
 
-- **72 unit/regression tests lulus**: parser config, challenge/receipt kedaluwarsa
+- **73 unit/regression tests lulus**: parser config, challenge/receipt kedaluwarsa
   dan salah instance/user/run, koneksi baru per checkpoint, urutan gate/failure,
   UFW tidak reset/disable, manifest drift/symlink, guard legacy, serta bundle
   roundtrip/checksum dan build berulang identik. Installer dari paket yang

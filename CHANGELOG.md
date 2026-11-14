@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-15 — Perbarui emulator fixture, guest tetap Jammy
+
+- Run 43649254705 gagal reboot Ubuntu polos sebelum installer dieksekusi. QMP
+  masih running, VGA `Guest has not initialized the display (yet)` setelah reset.
+- Ada laporan upstream Q35/TCG SeaBIOS reset loop (#766), cocok dengan gejala
+  tetapi belum membuktikan sebab pasti pada fixture ini. Ganti base tools ke
+  Ubuntu 24.04 digest terkunci, tetap guest Ubuntu 22.04 dan gate reboot baseline.
+- Rekam versi paket QEMU/SeaBIOS di laporan. Tidak mengubah installer, kernel
+  guest, konfigurasi reboot OS, atau memakai reset paksa sebagai bukti sukses.
+
 ## 2026-11-15 — Isolasi masalah reboot emulator/OS awal
 
 - Run 43643713232 meluluskan hostname SSH, IPv4/IPv6 transport, tiga gate, Docker

@@ -11,6 +11,8 @@ from the existence of these scripts. No production Tailscale credentials require
 - Two genuine Ubuntu 22.04 kernels run under QEMU, KVM where available and TCG
   otherwise. Nested KVM is not guaranteed by GitHub; acceleration is recorded.
 - Docker is only a wrapper for QEMU/tools and a temporary Headscale control plane.
+  The tools container uses Ubuntu 24.04 for newer QEMU/SeaBIOS; both tested guest
+  kernels/images remain Ubuntu 22.04. Exact emulator package versions are reported.
   It is **not** used to impersonate a fresh systemd host. No privileged container,
   host networking, Docker socket mount, or published host port.
 - The two guests have a virtual Ethernet link over a QEMU loopback socket. Its
@@ -95,3 +97,4 @@ flip the candidate's `production_ready` field or publish a production release.
 - https://github.com/tailscale/tailscale/issues/1152
 - https://headscale.net/stable/ref/policy/
 - https://docs.github.com/en/actions/concepts/runners/github-hosted-runners
+- https://gitlab.com/qemu-project/qemu/-/issues/766

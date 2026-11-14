@@ -394,6 +394,8 @@ def installer_session(fail_first=False):
 
 
 def acceptance():
+    REPORT['emulator_packages'] = run(['dpkg-query', '-W', '-f=${Package} ${Version}\n',
+                                      'qemu-system-x86', 'seabios'])
     stage('download-verified-ubuntu')
     download_image()
     stage('boot-two-real-guests')
