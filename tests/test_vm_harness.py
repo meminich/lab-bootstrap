@@ -48,6 +48,9 @@ class VmHarnessSafety(unittest.TestCase):
             self.assertIn('sudo -k', sent[1])
             self.assertNotIn('sudo -S', sent[1])
             self.assertEqual(sent[2], 'generated-fixture-only')
+            ready_pattern = child.expect.call_args_list[0].args[0]
+            for ending in ('\n', '\r\n', '\r\r\n'):
+                self.assertIsNotNone(re.search(ready_pattern, ending + 'LAB-SHELL-READY' + ending))
 
     def test_fixture_reverse_dns_fits_jammy_resolved_domain_limit(self):
         prefix = ipaddress.ip_network(FIXTURE.headscale_config('172.30.0.2')['prefixes']['v4'])

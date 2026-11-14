@@ -93,7 +93,7 @@ def peer(command, sudo=False, timeout=120, family=None):
         # Tailscale SSH remote-command mode can have a PTY without a controlling
         # terminal on Jammy, so tty(1) alone does not prove sudo can open /dev/tty.
         child.sendline("stty -echo; printf '\\nLAB-SHELL-READY\\n'")
-        child.expect(r'\r?\nLAB-SHELL-READY\r?\n')
+        child.expect(r'\r*\nLAB-SHELL-READY\r*\n')
         child.sendline("printf '\\n'; " + command + '; fixture_rc=$?; exit "$fixture_rc"')
         if sudo:
             child.expect_exact('[fixture-sudo] ')
