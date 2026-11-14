@@ -1,5 +1,6 @@
 import importlib.util
 import os
+import re
 from pathlib import Path
 import tempfile
 import unittest
@@ -13,6 +14,17 @@ SPEC.loader.exec_module(FIXTURE)
 
 
 class VmHarnessSafety(unittest.TestCase):
+    def test_checkpoint_survives_tmux_cursor_movement_and_wrap(self):
+        spec = importlib.util.spec_from_file_location('terminal_protocol', ROOT / 'tests/vm/terminal_protocol.py')
+        protocol = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(protocol)
+        gap = '\x1b[K\x1b[1;50r\x1b[49;12H\x1b[1;49r\x1b[49;1H\n\x1b[48;12H '
+        for purpose in ('before-lockdown', 'after-lockdown', 'after-foundation'):
+            for separator in (' ', gap):
+                match = re.search(protocol.CHECKPOINT_PATTERN, 'CHECKPOINT:' + separator + purpose)
+                self.assertIsNotNone(match)
+                self.assertEqual(match.group(1), purpose)
+
     def test_explicit_subnet_avoids_existing_docker_ranges(self):
         networks = [{'IPAM': {'Config': None}}, {'IPAM': {'Config': [{'Subnet': '172.16.0.0/16'},
                                          {'Subnet': '172.17.0.0/16'},

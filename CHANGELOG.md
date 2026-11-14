@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-14 — Koreksi penyiapan dan pembaca checkpoint VM
+
+- Simpan stderr Docker tersanitasi; gunakan subnet eksplisit yang tidak tumpang
+  tindih dan tangani IPAM null pada jaringan bawaan Docker.
+- Kenali checkpoint yang terpisah kode cursor/wrapping tmux; tambah regresi dari
+  rekaman kegagalan nyata. Tidak mengubah atau melewati verifier produksi.
+- Run 43613122739 membuktikan boot dua VM TCG, enrollment fixture, dan tahap
+  prepare installer; belum membuktikan lockdown, foundation, atau reboot.
+
 ## 2026-11-14 — Harness fresh VM tanpa kredensial produksi
 
 - Tambahkan workflow disposable dua VM Ubuntu 22.04 dan Headscale HTTPS privat,

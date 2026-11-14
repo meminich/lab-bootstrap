@@ -14,6 +14,7 @@ import time
 import urllib.request
 
 import pexpect
+from terminal_protocol import CHECKPOINT_PATTERN
 
 WORK = Path('/work')
 META = json.loads((WORK / 'metadata.json').read_text())
@@ -244,7 +245,7 @@ def installer_session(fail_first=False):
     expected_stop = False
     patterns = [r'Console/VNC provider[^\r\n]*\[y/N\]', r'Setuju membuat admin[^\r\n]*\[y/N\]',
                 r'(?i)New password:', r'(?i)Retype new password:',
-                r'CHECKPOINT: (before-lockdown|after-lockdown|after-foundation)', r'STOP:', pexpect.EOF]
+                CHECKPOINT_PATTERN, r'STOP:', pexpect.EOF]
     try:
         while True:
             event = child.expect(patterns)
