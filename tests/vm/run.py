@@ -29,7 +29,7 @@ def write(path, value, mode=0o600):
 
 def fixture_subnet(networks):
     used = [ipaddress.ip_network(item['Subnet']) for network in networks
-            for item in network.get('IPAM', {}).get('Config', []) if item.get('Subnet')]
+            for item in (network.get('IPAM', {}).get('Config') or []) if item.get('Subnet')]
     for candidate in ipaddress.ip_network('172.16.0.0/12').subnets(new_prefix=24):
         if not any(candidate.overlaps(existing) for existing in used):
             return str(candidate)
