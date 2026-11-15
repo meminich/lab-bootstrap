@@ -184,6 +184,18 @@ def validate_receipt(receipt, challenge, state, current_identity, now=None):
 def source_files(root):
     root = Path(root)
     names = ['install.sh', 'toolchain.json', 'requirements.lock', 'requirements.in']
+    # A digest of an incomplete directory is not a complete installer payload.
+    # Require every runtime entry point/playbook/template before host preflight.
+    required = {
+        'labbootstrap': ('__init__.py', 'common.py', 'installer.py', 'checkpoint.py',
+                         'gate.py', 'firewall.py', 'tooling.py', 'wait_tailnet.py'),
+        'playbooks': ('prepare.yml', 'lockdown.yml', 'foundation.yml', 'ansible.cfg'),
+        'templates': ('access-helper.sh', 'home/AGENTS.md', 'playground/AGENTS.md',
+                      'workspace/README.md.j2', 'workspace/service.md.j2',
+                      'workspace/compose.yml.j2', 'workspace/gitignore.j2',
+                      'workspace/index.html.j2', 'workspace/env.j2'),
+    }
+    names.extend(directory + '/' + name for directory, files in required.items() for name in files)
     for directory in ('labbootstrap', 'playbooks', 'templates'):
         names.extend(str(p.relative_to(root)) for p in (root / directory).rglob('*')
                      if p.suffix in ('.py', '.yml', '.md', '.j2', '.sh', '.cfg'))

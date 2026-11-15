@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-11-15 — Gate kegagalan dan review sebelum merge
+
+- Review menemukan digest paket tidak lengkap belum selalu ditolak; wajibkan
+  semua entry point/playbook/template runtime sebelum host preflight. Tambah tes
+  file hilang nyata serta batas owner/perms/symlink state. Perbarui pesan eksperimen.
+- Perluas acceptance: deny ACL SSH admin → allow fixture, password sudo salah,
+  receipt asli expired tanpa mengubah TTL/clock, Ctrl-C setelah lockdown dan
+  resume melalui SSH admin. Hasil baru belum diklaim sebelum workflow selesai.
+- Tambah SECURITY-REVIEW dan RECOVERY; sertakan di kandidat deterministik + SHA256
+  dan artifact CI source-only. Tidak menerbitkan rilis produksi atau mengubah VPS.
+- Merge hanya setelah gate head/payload terbaru lulus sesuai otorisasi pemilik.
+
 ## 2026-11-15 — Acceptance dua VM lulus termasuk reboot
 
 - Run 43651778256 pada commit d4f2c73 meluluskan baseline reboot, instalasi payload

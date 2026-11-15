@@ -64,6 +64,29 @@ def headscale_config(ip):
     }
 
 
+def fixture_policy(allow_admin):
+    return {'acls': [{'action': 'accept', 'src': ['autogroup:member'], 'dst': ['autogroup:self:*']}],
+            'ssh': ([{'action': 'accept', 'src': ['autogroup:member'], 'dst': ['autogroup:self'],
+                      'users': ['vpsadmin']}] if allow_admin else [])}
+
+
+def wait_guest(process, private, allow_admin):
+    """One bounded fixture action, not a general command/API bridge."""
+    enabled = False
+    while True:
+        request = private / 'allow-admin.request'
+        if request.exists() and not enabled:
+            if request.is_symlink() or request.read_text() != 'allow-admin\n':
+                raise RuntimeError('Invalid fixture policy request.')
+            allow_admin()
+            enabled = True
+            write(private / 'allow-admin.ack', 'allow-admin\n')
+        try:
+            return process.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            pass
+
+
 def make_certificates(directory, ip):
     command(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2',
              '-subj', '/CN=Disposable bootstrap fixture CA', '-keyout', str(directory / 'ca.key'),
@@ -124,10 +147,9 @@ def main(work):
         control_dir.mkdir(mode=0o700)
         make_certificates(control_dir, ip)
         write(control_dir / 'config.json', json.dumps(headscale_config(ip), indent=2))
-        policy = {'acls': [{'action': 'accept', 'src': ['autogroup:member'], 'dst': ['autogroup:self:*']}],
-                  'ssh': [{'action': 'accept', 'src': ['autogroup:member'], 'dst': ['autogroup:self'],
-                           'users': ['autogroup:nonroot']}]}
-        write(control_dir / 'policy.json', json.dumps(policy))
+        # Begin with genuine SSH-policy denial. The guest must prove it cannot
+        # create a receipt before asking the fixture host to allow the admin.
+        write(control_dir / 'policy.json', json.dumps(fixture_policy(False)))
         (work / 'control-state').mkdir(mode=0o700)
         stage = 'start-private-control'
         command(['docker', 'run', '-d', '--name', control, '--user', '0:0', '--network', network,
@@ -164,10 +186,20 @@ def main(work):
         stage = 'run-real-vms'
         devices = ['--device', '/dev/kvm'] if os.access('/dev/kvm', os.R_OK | os.W_OK) else []
         print('Starting two genuine Ubuntu VMs; acceleration:', 'KVM' if devices else 'TCG', flush=True)
-        result = subprocess.run(['docker', 'run', '--name', runner, '--network', network,
-                                 *devices, '-v', str(work) + ':/work',
-                                 '-v', str(ROOT / 'tests/vm') + ':/harness:ro', image], check=False)
-        if result.returncode:
+        def allow_admin():
+            write(control_dir / 'policy.json', json.dumps(fixture_policy(True)))
+            command(['docker', 'kill', '--signal', 'HUP', control])
+
+        process = subprocess.Popen(['docker', 'run', '--name', runner, '--network', network,
+                                    *devices, '-v', str(work) + ':/work',
+                                    '-v', str(ROOT / 'tests/vm') + ':/harness:ro', image])
+        try:
+            result = wait_guest(process, private, allow_admin)
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=30)
+        if result:
             raise RuntimeError('VM acceptance failed; inspect sanitized public report.')
         print('Disposable VM acceptance completed. No production tailnet was used.')
     except Exception as error:

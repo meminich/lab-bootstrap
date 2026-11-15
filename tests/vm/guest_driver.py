@@ -76,7 +76,7 @@ def py_command(code):
     return '/usr/bin/python3 -c ' + shlex.quote(code)
 
 
-def peer(command, sudo=False, timeout=120, family=None, host='vpslab'):
+def peer(command, sudo=False, timeout=120, family=None, host='vpslab', reject_password=False):
     # Two distinct kernels: factory SSH reaches the client, then normal ssh uses
     # MagicDNS and the client's actual Tailscale interface to reach the target.
     if sudo:
@@ -100,10 +100,18 @@ def peer(command, sudo=False, timeout=120, family=None, host='vpslab'):
         child.sendline("printf '\\n'; " + command + '; fixture_rc=$?; exit "$fixture_rc"')
         if sudo:
             child.expect_exact('[fixture-sudo] ')
-            child.sendline(SECRETS['admin_password'])
+            child.sendline(SECRETS['admin_password'] + ('-wrong' if reject_password else ''))
+            if reject_password:
+                child.expect_exact('Sorry, try again.')
+                child.expect_exact('[fixture-sudo] ')
+                child.sendcontrol('d')
         child.expect(pexpect.EOF)
         text = child.before
         child.close()
+        if reject_password:
+            if child.exitstatus == 0:
+                raise RuntimeError('Wrong sudo password unexpectedly succeeded.')
+            return transcript.getvalue()
         if child.exitstatus != 0:
             raise RuntimeError('Peer SSH command failed: ' + redact(text[-5000:]))
         return text
@@ -328,10 +336,69 @@ def wait_magicdns():
             time.sleep(3)
 
 
-def installer_session(fail_first=False):
+def assert_initial_access(no_receipt=False):
+    command = 'test ! -e /etc/ssh/sshd_config.d/00-lab-bootstrap.conf'
+    if no_receipt:
+        command += ' && test ! -e /var/lib/lab-bootstrap/receipt.json'
+    factory(2222, command)
+    if not all(outside_probe(22).values()):
+        raise RuntimeError('A rejected checkpoint caused premature lockdown.')
+
+
+def negative_access_probes():
+    wait_magicdns()
+    try:
+        peer('true', timeout=40)
+    except RuntimeError as error:
+        if not re.search(r'denied|reject|not allowed|does not permit', str(error), re.I):
+            raise RuntimeError('SSH failed for a reason other than fixture policy denial: ' + str(error))
+    else:
+        raise RuntimeError('Deny-all fixture SSH policy unexpectedly allowed the admin.')
+    assert_initial_access(no_receipt=True)
+    REPORT['checks']['acl_denial_preserves_initial_access'] = True
+    request = WORK / 'private/allow-admin.request'
+    request.write_text('allow-admin\n')
+    # Container root creates this on a host-user-owned mount. This fixed, public
+    # action must be readable by the runner; its parent remains private (0700).
+    request.chmod(0o644)
+    deadline = time.monotonic() + 120
+    while not (WORK / 'private/allow-admin.ack').exists():
+        if time.monotonic() >= deadline:
+            raise RuntimeError('Fixture host did not acknowledge SSH policy reload.')
+        time.sleep(1)
+    # Ack proves SIGHUP was sent, not that the netmap already reached the client.
+    while True:
+        try:
+            if 'fixture-policy-ready' not in peer('printf fixture-policy-ready', timeout=30):
+                raise RuntimeError('Unexpected policy readiness output.')
+            break
+        except RuntimeError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(2)
+    output = peer('/usr/local/sbin/lab-verify-access --connection "$SSH_CONNECTION"',
+                  sudo=True, reject_password=True)
+    if 'Sorry, try again.' not in output:
+        raise RuntimeError('Actual sudo authentication failure was not observed.')
+    assert_initial_access(no_receipt=True)
+    REPORT['checks']['wrong_sudo_password_cannot_create_receipt'] = True
+    save_report()
+
+
+def installer_session(scenario):
+    fail_first = scenario == 'missing-receipt'
+    via_admin = scenario == 'resume-after-interruption'
     executable = '/root/candidate/install.sh' if fail_first else '/usr/bin/python3 -I -B /opt/lab-bootstrap/source/labbootstrap/installer.py'
     command = ('bash ' if fail_first else '') + executable + ' --apply --experimental' + ('' if fail_first else ' --resume')
-    child = pexpect.spawn('ssh', ssh_args(2222, command, tty=True), encoding='utf-8',
+    if via_admin:
+        inner = ['ssh', '-tt', '-o', 'StrictHostKeyChecking=accept-new',
+                 '-o', 'UserKnownHostsFile=/root/.ssh/fixture_mesh_hosts',
+                 '-o', 'ConnectTimeout=15', '-o', 'ControlMaster=no',
+                 '-o', 'ControlPath=none', 'vpsadmin@vpslab']
+        spawn_args = ssh_args(2223, shlex.join(inner), tty=True)
+    else:
+        spawn_args = ssh_args(2222, command, tty=True)
+    child = pexpect.spawn('ssh', spawn_args, encoding='utf-8',
                           codec_errors='replace', timeout=1200, dimensions=(50, 240))
     child.setecho(False)
     buffer = io.StringIO()
@@ -343,6 +410,12 @@ def installer_session(fail_first=False):
                 r'(?i)New password:', r'(?i)Retype new password:',
                 CHECKPOINT_PATTERN, r'STOP:', pexpect.EOF]
     try:
+        if via_admin:
+            child.sendline("stty -echo; printf '\\nLAB-SHELL-READY\\n'")
+            child.expect(r'\r*\nLAB-SHELL-READY\r*\n')
+            child.sendline("sudo -k -p '[fixture-sudo] ' -- " + command + '; fixture_rc=$?; exit "$fixture_rc"')
+            child.expect_exact('[fixture-sudo] ')
+            child.sendline(SECRETS['admin_password'])
         while True:
             event = child.expect(patterns)
             if event in (0, 1):
@@ -358,10 +431,14 @@ def installer_session(fail_first=False):
                 purpose = child.match.group(1)
                 child.expect(r'Sesudah verifier berhasil[^\r\n]*Enter:')
                 if fail_first:
+                    negative_access_probes()
                     expected_stop = True
                     child.sendline('')
                     continue
                 wait_magicdns()
+                if scenario == 'interrupt-after-lockdown' and purpose == 'after-lockdown':
+                    child.sendcontrol('c')
+                    continue
                 if purpose == 'after-lockdown':
                     probe = outside_probe(22)
                     if any(probe.values()):
@@ -370,8 +447,31 @@ def installer_session(fail_first=False):
                 output = peer('/usr/local/sbin/lab-verify-access --connection "$SSH_CONNECTION"', sudo=True)
                 if 'Akses Tailscale dan sudo terbukti' not in output:
                     raise RuntimeError('Genuine access verifier did not confirm the peer.')
+                if scenario == 'expired-receipt':
+                    timing_command = py_command(
+                        "import json,time; c=json.load(open('/var/lib/lab-bootstrap/challenge.json')); "
+                        "print('LABJSON:'+json.dumps({'expires':c['expires'],'now':time.time()}))")
+                    timing = mark_json(factory(2222, timing_command))
+                    # Let a real receipt expire naturally. No receipt fabrication,
+                    # altered system clock, shortened production TTL, or skip gate.
+                    delay = max(0, timing['expires'] - timing['now'] + 2)
+                    REPORT['expiry_wait_seconds'] = delay
+                    stage('waiting-for-real-receipt-expiry')
+                    time.sleep(delay)
+                    expiry_deadline = time.monotonic() + 120
+                    while True:
+                        observed = mark_json(factory(2222, timing_command))
+                        if observed['now'] >= timing['expires']:
+                            REPORT['expiry_observed_guest_time'] = observed['now']
+                            break
+                        if time.monotonic() >= expiry_deadline:
+                            raise RuntimeError('Guest clock has not reached the real receipt expiry.')
+                        time.sleep(2)
+                    expected_stop = True
+                    child.sendline('')
+                    continue
                 checkpoints.append(purpose)
-                REPORT['checks']['checkpoints'] = list(checkpoints)
+                REPORT['checks'].setdefault('checkpoints', []).append(purpose)
                 save_report()
                 child.sendline('')
             elif event == 5:
@@ -380,14 +480,18 @@ def installer_session(fail_first=False):
             else:
                 break
         child.close()
-        if fail_first:
+        if scenario in ('missing-receipt', 'expired-receipt'):
             if not expected_stop or 'STOP:' not in buffer.getvalue():
                 raise RuntimeError('Expected missing-receipt failure did not occur.')
-        elif checkpoints != ['before-lockdown', 'after-lockdown', 'after-foundation']:
-            raise RuntimeError('Not all three real SSH/sudo checkpoints completed.')
-        REPORT['checks']['checkpoints'] = checkpoints
+            if scenario == 'expired-receipt' and 'kedaluwarsa' not in buffer.getvalue():
+                raise RuntimeError('Installer did not explicitly reject the expired receipt.')
+        elif scenario == 'interrupt-after-lockdown':
+            if checkpoints != ['before-lockdown'] or 'Dihentikan' not in buffer.getvalue():
+                raise RuntimeError('Installer interruption was not observed at the required phase.')
+        elif checkpoints != ['after-lockdown', 'after-foundation']:
+            raise RuntimeError('Post-interruption resume did not complete new SSH/sudo checkpoints.')
     finally:
-        (WORK / 'public' / ('installer-first.txt' if fail_first else 'installer-resume.txt')).write_text(
+        (WORK / 'public' / ('installer-' + scenario + '.txt')).write_text(
             redact(buffer.getvalue())[-70000:])
         if child.isalive():
             child.close(force=True)
@@ -426,15 +530,35 @@ def acceptance():
          str(candidate), 'root@127.0.0.1:/root/candidate.tar.gz'])
     factory(2222, 'mkdir /root/candidate && tar -xzf /root/candidate.tar.gz -C /root/candidate --strip-components=1')
     stage('negative-checkpoint-must-not-lock-out')
-    installer_session(fail_first=True)
-    factory(2222, 'test ! -e /etc/ssh/sshd_config.d/00-lab-bootstrap.conf')
-    if not all(outside_probe(22).values()):
-        raise RuntimeError('Missing receipt caused premature lockdown.')
+    installer_session('missing-receipt')
+    assert_initial_access(no_receipt=True)
     REPORT['checks']['missing_receipt_preserves_initial_access'] = True
     REPORT['listeners_after_prepare'] = factory(2222, 'ss -H -ltn; ss -H -lun')
     mesh_diagnostics('after-prepare')
-    stage('resume-and-three-genuine-checkpoints')
-    installer_session(fail_first=False)
+    stage('real-expired-receipt-must-not-lock-out')
+    installer_session('expired-receipt')
+    assert_initial_access()
+    REPORT['checks']['expired_receipt_preserves_initial_access'] = True
+    stage('interrupt-installer-after-lockdown')
+    installer_session('interrupt-after-lockdown')
+    interrupted = mark_json(peer_sudo_shell(py_command(
+        "import json;s=json.load(open('/var/lib/lab-bootstrap/state.json'));"
+        "print('LABJSON:'+json.dumps({'locked_down':s.get('locked_down'),'configured':s.get('configured',False),'run_id':s['run_id']}))")))
+    if interrupted['locked_down'] is not True or interrupted['configured']:
+        raise RuntimeError('Interrupted installer state did not preserve the lockdown boundary.')
+    if any(outside_probe(22).values()):
+        raise RuntimeError('Interrupted installer reopened public SSH.')
+    stage('resume-via-real-admin-ssh-after-interruption')
+    installer_session('resume-after-interruption')
+    final_state = mark_json(peer_sudo_shell(py_command(
+        "import json;s=json.load(open('/var/lib/lab-bootstrap/state.json'));"
+        "print('LABJSON:'+json.dumps({'configured':s.get('configured'),'run_id':s['run_id'],'connections':s['used_connections']}))")))
+    if (final_state['configured'] is not True or final_state['run_id'] == interrupted['run_id']
+            or len(set(final_state['connections'])) != 3):
+        raise RuntimeError('Resume did not require a new run identity and three distinct verified sessions.')
+    if REPORT['checks'].get('checkpoints') != ['before-lockdown', 'after-lockdown', 'after-foundation']:
+        raise RuntimeError('Not all three access checkpoints passed across interruption/resume.')
+    REPORT['checks']['interrupted_installer_resumes_via_admin_ssh_without_reopening_public'] = True
     receipt = mark_json(peer_sudo_shell(py_command(
         "import json;print('LABJSON:'+json.dumps(json.load(open('/var/lib/lab-bootstrap/result.json'))))")))
     if receipt['source_digest'] != META['source_digest']:

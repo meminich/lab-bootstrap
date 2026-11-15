@@ -61,7 +61,8 @@ class CandidatePackageTests(unittest.TestCase):
                 self.assertEqual(hashlib.sha256(data).hexdigest(), manifest['files'][name], name)
             for required in ('install.sh', 'labbootstrap/installer.py', 'playbooks/ansible.cfg',
                              'playbooks/prepare.yml', 'playbooks/lockdown.yml',
-                             'playbooks/foundation.yml', 'requirements.lock'):
+                             'playbooks/foundation.yml', 'requirements.lock',
+                             'docs/RECOVERY.md', 'docs/SECURITY-REVIEW.md'):
                 self.assertIn(required, contents)
             self.assertFalse(any(name.startswith('legacy/') for name in contents))
             self.assertFalse(any(name.endswith('.env') for name in contents))

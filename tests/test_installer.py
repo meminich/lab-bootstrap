@@ -5,7 +5,9 @@ import io
 import json
 from pathlib import Path
 import subprocess
+import stat
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -204,6 +206,26 @@ class FirewallTests(unittest.TestCase):
 
 
 class InstallerSafetyTests(unittest.TestCase):
+    def test_private_state_file_rejects_symlink_wrong_owner_and_public_permissions(self):
+        path = Path('/fixture/state.json')
+        good = SimpleNamespace(st_mode=stat.S_IFREG | 0o600, st_uid=0)
+        with patch.object(Path, 'lstat', return_value=good):
+            self.assertEqual(common.private_file(path), path)
+        for mode, uid in ((stat.S_IFLNK | 0o600, 0), (stat.S_IFREG | 0o644, 0),
+                          (stat.S_IFREG | 0o600, 1000)):
+            with self.subTest(mode=mode, uid=uid), \
+                    patch.object(Path, 'lstat', return_value=SimpleNamespace(st_mode=mode, st_uid=uid)):
+                with self.assertRaises(common.SafetyError):
+                    common.private_file(path)
+
+    def test_private_state_directory_rejects_symlink_wrong_owner_and_public_permissions(self):
+        for mode, uid in ((stat.S_IFLNK | 0o700, 0), (stat.S_IFDIR | 0o755, 0),
+                          (stat.S_IFDIR | 0o700, 1000)):
+            with self.subTest(mode=mode, uid=uid), \
+                    patch.object(Path, 'lstat', return_value=SimpleNamespace(st_mode=mode, st_uid=uid)):
+                with self.assertRaises(common.SafetyError):
+                    common.private_directory(Path('/fixture/state'))
+
     def test_docker_waits_for_actual_interface_not_just_cached_tailnet_metadata(self):
         responses = [subprocess.CompletedProcess([], 0, '100.100.0.2\n'),
                      subprocess.CompletedProcess([], 0, '[]')]
@@ -249,6 +271,23 @@ class InstallerSafetyTests(unittest.TestCase):
             with self.assertRaises(common.SafetyError):
                 installer.main()
             preflight.assert_not_called()
+
+    def test_real_missing_runtime_files_are_rejected_by_source_digest(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for name, source in common.source_files(ROOT):
+                destination = root / name
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(source.read_bytes())
+            self.assertEqual(common.source_digest(root), common.source_digest(ROOT))
+            for name in ('playbooks/lockdown.yml', 'labbootstrap/gate.py',
+                         'templates/workspace/compose.yml.j2', 'requirements.lock'):
+                file = root / name
+                content = file.read_bytes()
+                file.unlink()
+                with self.subTest(missing=name), self.assertRaises(common.SafetyError):
+                    common.source_digest(root)
+                file.write_bytes(content)
 
     def test_no_skip_verify_or_yes_flag(self):
         for flag in ('--skip-verify', '--yes', '--force'):

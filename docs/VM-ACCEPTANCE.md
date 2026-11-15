@@ -45,12 +45,21 @@ were used. This is not a blanket production-readiness or provider claim.
 4. At its ordinary password/login pause, register the target in the private
    Headscale network. No production `--auth-key`/`--skip-verify` option is added.
 5. Deliberately fail the first access checkpoint and prove factory access remains.
+   Before submitting it without a receipt, prove that an actual deny-all SSH policy
+   rejects the admin; reload a fixture-only allow policy through SIGHUP, then prove
+   a wrong sudo password cannot write a receipt. The host has only a single fixed
+   deny→allow request/ack action, never a general command bridge.
+   Resume and obtain a genuine receipt, let its unmodified 900-second TTL expire
+   naturally on the guest clock, and prove the installer refuses lockdown again.
 6. Resume the same installed source. Three separate actual client SSH sessions
    enter the real sudo password and invoke the production verifier. No fabricated
    receipt, environment-based verifier bypass, or NOPASSWD policy.
    Each session opens an interactive login shell before typing sudo, matching
    the documented human workflow; remote-command SSH on the tested Tailscale/
    Jammy combination exposed a PTY without sudo's controlling terminal.
+   Interrupt the installer process with Ctrl-C at the after-lockdown prompt.
+   Public access must remain closed. Resume the same payload via a new admin
+   SSH/sudo session and require a new run ID plus fresh remaining checkpoints.
 7. Prove non-tailnet IPv4/IPv6 SSH is blocked. Deploy the generated demo container;
    prove HTTP through the mesh and no exposure on the non-tailnet interfaces.
 8. Create owned SQLite/document fixtures containing legacy placeholders. Rerun

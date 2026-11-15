@@ -2,8 +2,9 @@
 
 Status: installer/playbook **eksperimental** tersedia. Guard, validasi config,
 receipt, urutan gate/firewall, manifest, dependency lock, syntax Ansible, serta
-render template dapat diuji tanpa privilege. Acceptance end-to-end dua VM telah
-lulus dengan control plane terisolasi; bukan kelulusan seluruh matriks rilis atau
+render template dapat diuji tanpa privilege. Acceptance baseline dua VM telah
+lulus dengan control plane terisolasi. Payload hardening terbaru perlu acceptance
+ulang dengan failure injection sebelum merge; bukan rilis produksi atau kelulusan
 akun/provider pemilik. Protokol: [CHECKPOINT](CHECKPOINT.md).
 
 ## Klaim, pemilik, dan bukti minimum
@@ -81,7 +82,22 @@ instruksi recovery console, serta review checkpoint privilege. Secret tidak bole
 masuk receipt, log, screenshot, atau artifact. Arsitektur yang belum diuji tidak
 boleh dilabeli didukung. Branch/PR ini bukan rilis installer.
 
-## Acceptance VM lulus — 15 November 2026
+## Gate tambahan sebelum merge — 15 November 2026
+
+| Klaim | Pemilik bukti | Jalur minimum / status |
+|---|---|---|
+| Paket tidak lengkap ditolak sebelum mutasi | Unit/regression repo | Hapus file runtime dari salinan nyata; digest wajib gagal. Lulus lokal. |
+| ACL SSH menolak admin tanpa lockdown | Fixture Headscale + client VM | Mulai policy SSH deny; login harus ditolak dan receipt tidak ada; SSH awal IPv4/IPv6 tetap terbuka. Menunggu run baru. |
+| Password sudo salah tidak menghasilkan receipt | Client VM/PAM | Kirim satu password salah lewat TTY, amati penolakan sudo, batalkan prompt; periksa receipt tidak ada. Menunggu run baru. |
+| Receipt asli kedaluwarsa ditolak | Installer + client VM | Verifier membuat receipt nyata, tunggu TTL 900 detik/clock guest alami; submit harus STOP dan akses awal tetap tersedia. Tanpa edit receipt/clock. Menunggu run baru. |
+| Interupsi setelah lockdown dapat di-resume dengan aman | Installer + client VM | Ctrl-C pada checkpoint after-lockdown, cek publik tetap tertutup; resume source terpasang melalui SSH admin, run ID baru, sesi gate baru. Menunggu run baru. |
+| Kandidat dapat diverifikasi/dipulihkan | Packaging CI + review kode | Archive deterministik, manifest + SHA256, panduan RECOVERY, artifact source-only. Bukan rilis produksi. |
+
+Review dan batas trust: [SECURITY-REVIEW](SECURITY-REVIEW.md). Interupsi pada batas
+fase tidak membuktikan recovery dpkg yang diputus saat menulis paket. Matriks
+lain/provider tetap dilaporkan belum teruji, bukan diberi status lulus otomatis.
+
+## Acceptance VM baseline lulus — sebelum hardening payload terbaru
 
 Run [43651778256](https://github.com/meminich/lab-bootstrap/actions/runs/43651778256)
 **lulus** pada commit `d4f2c73b5cd427fea129157d91310c4f3a6d3ed4`.
@@ -91,7 +107,7 @@ identik dengan artifact run (artifact GitHub sementara memiliki masa retensi).
 - Dua kernel Ubuntu 22.04 amd64 sungguhan, QEMU TCG 8.2.2 + SeaBIOS 1.16.3;
   Headscale 0.29.7 HTTPS privat, tanpa kredensial tailnet produksi.
 - Reboot Ubuntu polos sebelum installer lulus. Installer payload tidak diubah
-  di guest; result digest cocok dengan digest yang dicatat di bawah.
+  di guest; result digest cocok dengan digest pada laporan baseline tersebut.
 - Missing receipt menolak lockdown tanpa memutus akses awal; tiga receipt dari
   sesi SSH/sudo nyata dan terpisah lulus sebelum/sesudah lockdown/foundation.
 - MagicDNS nama pendek, transport SSH IPv4 dan IPv6 lulus. SSH pada interface
@@ -152,9 +168,9 @@ stream UFW). Dua kernel Ubuntu 22.04 berjalan dengan QEMU TCG dan Headscale priv
 
 ## Bukti lokal — diperbarui 15 November 2026
 
-Payload digest: `586b2b46155719ff36d9f5c0bd6511eabc8380cb38b940ea1132e9245351c8b6`.
+Payload digest terbaru: `6496587cfee8c109007bd96e7a416d25a79f669f8c72ee1931868ebf8ab5c80d`.
 
-- **73 unit/regression tests lulus**: parser config, challenge/receipt kedaluwarsa
+- **80 unit/regression tests lulus**: parser config, challenge/receipt kedaluwarsa
   dan salah instance/user/run, koneksi baru per checkpoint, urutan gate/failure,
   UFW tidak reset/disable, manifest drift/symlink, guard legacy, serta bundle
   roundtrip/checksum dan build berulang identik. Installer dari paket yang

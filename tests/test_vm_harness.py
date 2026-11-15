@@ -6,6 +6,7 @@ import json
 import os
 import re
 import shlex
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -19,6 +20,39 @@ SPEC.loader.exec_module(FIXTURE)
 
 
 class VmHarnessSafety(unittest.TestCase):
+    def test_policy_starts_with_real_ssh_denial_and_only_allows_fixture_admin(self):
+        self.assertEqual(FIXTURE.fixture_policy(False)['ssh'], [])
+        self.assertEqual(FIXTURE.fixture_policy(True)['ssh'][0]['users'], ['vpsadmin'])
+        self.assertEqual(FIXTURE.fixture_policy(False)['acls'], FIXTURE.fixture_policy(True)['acls'])
+
+    def test_policy_request_has_one_action_and_ack_only_after_reload(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            private = Path(temporary)
+            (private / 'allow-admin.request').write_text('allow-admin\n')
+            process = MagicMock()
+            process.wait.side_effect = [subprocess.TimeoutExpired('fixture', 1), 0]
+            allow = MagicMock()
+            self.assertEqual(FIXTURE.wait_guest(process, private, allow), 0)
+            allow.assert_called_once_with()
+            self.assertEqual((private / 'allow-admin.ack').read_text(), 'allow-admin\n')
+
+    def test_failed_policy_reload_never_acknowledges_success(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            private = Path(temporary)
+            (private / 'allow-admin.request').write_text('allow-admin\n')
+            with self.assertRaises(RuntimeError):
+                FIXTURE.wait_guest(MagicMock(), private, MagicMock(side_effect=RuntimeError('reload failed')))
+            self.assertFalse((private / 'allow-admin.ack').exists())
+
+    def test_policy_request_rejects_arbitrary_commands(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            private = Path(temporary)
+            (private / 'allow-admin.request').write_text('run arbitrary command')
+            allow = MagicMock()
+            with self.assertRaises(RuntimeError):
+                FIXTURE.wait_guest(MagicMock(), private, allow)
+            allow.assert_not_called()
+
     def test_modern_emulator_tools_do_not_change_jammy_guest_target(self):
         dockerfile = (ROOT / 'tests/vm/Dockerfile').read_text()
         self.assertTrue(dockerfile.startswith('FROM ubuntu:24.04@sha256:'))
@@ -83,6 +117,13 @@ class VmHarnessSafety(unittest.TestCase):
             ipv6 = shlex.split(pexpect.spawn.call_args.args[1][0])
             self.assertEqual(ipv6[-1], 'vpsadmin@fd7a:115c:a1e0::2')
             self.assertIn('-6', ipv6)
+            child.exitstatus = 1
+            namespace['peer']('/usr/local/sbin/lab-verify-access', sudo=True, reject_password=True)
+            self.assertEqual(child.sendline.call_args.args[0], 'generated-fixture-only-wrong')
+            child.sendcontrol.assert_called_with('d')
+            child.exitstatus = 0
+            with self.assertRaisesRegex(RuntimeError, 'Wrong sudo password unexpectedly succeeded'):
+                namespace['peer']('/usr/local/sbin/lab-verify-access', sudo=True, reject_password=True)
 
     def test_fixture_reverse_dns_fits_jammy_resolved_domain_limit(self):
         prefix = ipaddress.ip_network(FIXTURE.headscale_config('172.30.0.2')['prefixes']['v4'])

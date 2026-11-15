@@ -368,14 +368,14 @@ def main():
     mode.add_argument('--dry-run', action='store_true', help='rencana saja; default, tanpa penulisan')
     mode.add_argument('--preflight', action='store_true', help='cek host read-only, perlu root')
     mode.add_argument('--apply', action='store_true', help='ubah host fresh, belum untuk produksi')
-    parser.add_argument('--experimental', action='store_true', help='acknowledge belum lolos tes VM/client')
+    parser.add_argument('--experimental', action='store_true', help='akui kandidat belum menjadi rilis produksi')
     parser.add_argument('--resume', action='store_true', help='lanjutkan run milik installer dengan source sama')
     parser.add_argument('--config', type=Path, help='JSON eksplisit; tidak membaca config.env')
     args = parser.parse_args()
     if not args.apply and not args.preflight:
         print('RENCANA SAJA: belum ada mutasi host atau unduhan dependency.')
         print('Ubuntu 22.04 amd64 → admin → Tailscale → checkpoint → lockdown → checkpoint → Docker/workspace.')
-        print('Belum production-ready: tes VM, client eksternal dan reboot belum dibuktikan.')
+        print('Kandidat eksperimental, bukan rilis produksi. Lihat docs/VERIFICATION.md untuk bukti dan batas tes.')
         return
     if args.apply and not args.experimental:
         raise SafetyError('Belum rilis teruji. Apply memerlukan --experimental pada VPS uji fresh.')

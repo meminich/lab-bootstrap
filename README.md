@@ -66,6 +66,11 @@ Resume menolak config/source yang berbeda, drift file kelolaan, dan container
 existing selama setup belum selesai. Setelah selesai, resume tidak mengubah apa pun;
 ini bukan mekanisme update host atau alat memperbaiki instalasi orang lain.
 
+Langkah aman saat koneksi/proses gagal: [RECOVERY](docs/RECOVERY.md).
+Hasil review dan batas trust: [SECURITY-REVIEW](docs/SECURITY-REVIEW.md).
+CI menyediakan artifact **kandidat + SHA256**, bukan rilis produksi; nama artifact
+memuat commit source. Tetap unduh seluruh paket dan verifikasi checksum.
+
 ## Alur installer
 
 1. Fresh install Ubuntu Server **22.04 LTS** dari provider.

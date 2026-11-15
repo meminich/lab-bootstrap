@@ -1,6 +1,7 @@
 # Desain v2 — Ubuntu Server 22.04 LTS
 
-Status: **implementasi eksperimental tersedia, belum lolos tes VM/client/reboot**.
+Status: **kandidat eksperimental; acceptance VM/client/reboot terisolasi lulus**.
+Hasil terbaru dan batas rilis dirujuk dari [VERIFICATION](VERIFICATION.md).
 Default desain satu tempat (diselaraskan dengan `CONFIG_DEFAULTS` di kode):
 
 | Pengaturan | Default |
