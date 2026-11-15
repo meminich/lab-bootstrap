@@ -2,6 +2,9 @@
 
 ## 2026-11-15 — Gate kegagalan dan review sebelum merge
 
+- Run 43662194601 membuktikan penolakan ACL; sudo menolak password salah tetapi
+  status sesi SSH nol membingungkan harness. Gunakan marker exit command dari
+  shell dan pemeriksaan receipt, bukan menyamakan status sesi dengan autentikasi.
 - Run 43661212671 menolak UDP wildcard port acak sebelum apply. Tambah metadata
   pemilik socket sebelum install/saat gagal; tidak mengendurkan gate port asing.
 - Review menemukan digest paket tidak lengkap belum selalu ditolak; wajibkan

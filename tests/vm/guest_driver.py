@@ -16,7 +16,7 @@ import urllib.request
 import uuid
 
 import pexpect
-from terminal_protocol import CHECKPOINT_PATTERN
+from terminal_protocol import CHECKPOINT_PATTERN, command_exit_status
 from qmp import command as qmp_command
 
 WORK = Path('/work')
@@ -97,22 +97,27 @@ def peer(command, sudo=False, timeout=120, family=None, host='vpslab', reject_pa
         # terminal on Jammy, so tty(1) alone does not prove sudo can open /dev/tty.
         child.sendline("stty -echo; printf '\\nLAB-SHELL-READY\\n'")
         child.expect(r'\r*\nLAB-SHELL-READY\r*\n')
-        child.sendline("printf '\\n'; " + command + '; fixture_rc=$?; exit "$fixture_rc"')
+        child.sendline("printf '\\n'; " + command
+                       + '; fixture_rc=$?; printf "\\nLAB-PEER-EXIT:%s\\n" "$fixture_rc"; exit "$fixture_rc"')
         if sudo:
             child.expect_exact('[fixture-sudo] ')
             child.sendline(SECRETS['admin_password'] + ('-wrong' if reject_password else ''))
             if reject_password:
-                child.expect_exact('Sorry, try again.')
-                child.expect_exact('[fixture-sudo] ')
-                child.sendcontrol('d')
+                # Jammy's default three tries: let sudo fail normally instead of
+                # sending EOF, which can also terminate the surrounding shell.
+                for _ in range(2):
+                    child.expect_exact('Sorry, try again.')
+                    child.expect_exact('[fixture-sudo] ')
+                    child.sendline(SECRETS['admin_password'] + '-wrong')
         child.expect(pexpect.EOF)
         text = child.before
         child.close()
+        status = command_exit_status(transcript.getvalue())
         if reject_password:
-            if child.exitstatus == 0:
+            if status == 0:
                 raise RuntimeError('Wrong sudo password unexpectedly succeeded.')
             return transcript.getvalue()
-        if child.exitstatus != 0:
+        if status != 0 or child.exitstatus != 0:
             raise RuntimeError('Peer SSH command failed: ' + redact(text[-5000:]))
         return text
     except (pexpect.EOF, pexpect.TIMEOUT) as error:

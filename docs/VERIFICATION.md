@@ -88,7 +88,7 @@ boleh dilabeli didukung. Branch/PR ini bukan rilis installer.
 |---|---|---|
 | Paket tidak lengkap ditolak sebelum mutasi | Unit/regression repo | Hapus file runtime dari salinan nyata; digest wajib gagal. Lulus lokal. |
 | ACL SSH menolak admin tanpa lockdown | Fixture Headscale + client VM | Mulai policy SSH deny; login harus ditolak dan receipt tidak ada; SSH awal IPv4/IPv6 tetap terbuka. Menunggu run baru. |
-| Password sudo salah tidak menghasilkan receipt | Client VM/PAM | Kirim satu password salah lewat TTY, amati penolakan sudo, batalkan prompt; periksa receipt tidak ada. Menunggu run baru. |
+| Password sudo salah tidak menghasilkan receipt | Client VM/PAM | Kirim password salah lewat TTY hingga sudo menolak normal (3 percobaan default Jammy); periksa receipt tidak ada. Menunggu run baru. |
 | Receipt asli kedaluwarsa ditolak | Installer + client VM | Verifier membuat receipt nyata, tunggu TTL 900 detik/clock guest alami; submit harus STOP dan akses awal tetap tersedia. Tanpa edit receipt/clock. Menunggu run baru. |
 | Interupsi setelah lockdown dapat di-resume dengan aman | Installer + client VM | Ctrl-C pada checkpoint after-lockdown, cek publik tetap tertutup; resume source terpasang melalui SSH admin, run ID baru, sesi gate baru. Menunggu run baru. |
 | Kandidat dapat diverifikasi/dipulihkan | Packaging CI + review kode | Archive deterministik, manifest + SHA256, panduan RECOVERY, artifact source-only. Bukan rilis produksi. |
@@ -170,7 +170,7 @@ stream UFW). Dua kernel Ubuntu 22.04 berjalan dengan QEMU TCG dan Headscale priv
 
 Payload digest terbaru: `6496587cfee8c109007bd96e7a416d25a79f669f8c72ee1931868ebf8ab5c80d`.
 
-- **80 unit/regression tests lulus**: parser config, challenge/receipt kedaluwarsa
+- **81 unit/regression tests lulus**: parser config, challenge/receipt kedaluwarsa
   dan salah instance/user/run, koneksi baru per checkpoint, urutan gate/failure,
   UFW tidak reset/disable, manifest drift/symlink, guard legacy, serta bundle
   roundtrip/checksum dan build berulang identik. Installer dari paket yang

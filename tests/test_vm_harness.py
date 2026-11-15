@@ -20,6 +20,16 @@ SPEC.loader.exec_module(FIXTURE)
 
 
 class VmHarnessSafety(unittest.TestCase):
+    def test_remote_command_status_is_not_inferred_from_login_session_exit(self):
+        spec = importlib.util.spec_from_file_location('terminal_protocol', ROOT / 'tests/vm/terminal_protocol.py')
+        protocol = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(protocol)
+        self.assertEqual(protocol.command_exit_status('sudo: 1 incorrect password attempt\r\nLAB-PEER-EXIT:1\r\nlogout\r\n'), 1)
+        self.assertEqual(protocol.command_exit_status('LAB-PEER-EXIT:0\nlogout\n'), 0)
+        for text in ('logout\n', 'LAB-PEER-EXIT:999\n', 'LAB-PEER-EXIT:0\nLAB-PEER-EXIT:1\n'):
+            with self.assertRaises(RuntimeError):
+                protocol.command_exit_status(text)
+
     def test_policy_starts_with_real_ssh_denial_and_only_allows_fixture_admin(self):
         self.assertEqual(FIXTURE.fixture_policy(False)['ssh'], [])
         self.assertEqual(FIXTURE.fixture_policy(True)['ssh'][0]['users'], ['vpsadmin'])
@@ -99,7 +109,8 @@ class VmHarnessSafety(unittest.TestCase):
             namespace = {'shlex': shlex, 'io': io, 'pexpect': pexpect, 'WORK': work,
                          'SECRETS': {'admin_password': 'generated-fixture-only'},
                          'redact': lambda text: text.replace('generated-fixture-only', '[redacted]'),
-                         'ssh_args': lambda port, command, tty=False: [command]}
+                         'ssh_args': lambda port, command, tty=False: [command],
+                         'command_exit_status': MagicMock(return_value=0)}
             exec(compile(ast.Module(body=[function], type_ignores=[]), '<peer>', 'exec'), namespace)
             self.assertEqual(namespace['peer']('/usr/local/sbin/lab-verify-access', sudo=True), 'verifier output')
             outer = pexpect.spawn.call_args.args[1][0]
@@ -117,11 +128,14 @@ class VmHarnessSafety(unittest.TestCase):
             ipv6 = shlex.split(pexpect.spawn.call_args.args[1][0])
             self.assertEqual(ipv6[-1], 'vpsadmin@fd7a:115c:a1e0::2')
             self.assertIn('-6', ipv6)
-            child.exitstatus = 1
+            # Some login-session transports return zero even after sudo fails.
+            namespace['command_exit_status'].return_value = 1
             namespace['peer']('/usr/local/sbin/lab-verify-access', sudo=True, reject_password=True)
             self.assertEqual(child.sendline.call_args.args[0], 'generated-fixture-only-wrong')
-            child.sendcontrol.assert_called_with('d')
-            child.exitstatus = 0
+            child.sendcontrol.assert_not_called()
+            self.assertEqual(sum(call.args[0] == 'generated-fixture-only-wrong'
+                                 for call in child.sendline.call_args_list), 3)
+            namespace['command_exit_status'].return_value = 0
             with self.assertRaisesRegex(RuntimeError, 'Wrong sudo password unexpectedly succeeded'):
                 namespace['peer']('/usr/local/sbin/lab-verify-access', sudo=True, reject_password=True)
 
