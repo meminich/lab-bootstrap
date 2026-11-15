@@ -1,7 +1,9 @@
 # Unattended fresh-VM acceptance
 
-Status: harness implemented; results must come from a completed GitHub run, not
-from the existence of these scripts. No production Tailscale credentials required.
+Status: isolated acceptance passed in [run 43651778256](https://github.com/meminich/lab-bootstrap/actions/runs/43651778256).
+The [retained report](evidence/vm-43651778256.json) records the tested commit,
+payload, guest image, checks, and limitations. No production Tailscale credentials
+were used. This is not a blanket production-readiness or provider claim.
 
 ## Isolation
 

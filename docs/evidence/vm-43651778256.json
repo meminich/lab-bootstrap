@@ -1,0 +1,49 @@
+{
+  "acceleration": "tcg",
+  "checks": {
+    "checkpoints": [
+      "before-lockdown",
+      "after-lockdown",
+      "after-foundation"
+    ],
+    "client_magicdns_resolves_target": true,
+    "fixture_enrollment_without_production_credentials": true,
+    "missing_receipt_preserves_initial_access": true,
+    "outside_ssh_blocked_ipv4_ipv6": {
+      "198.18.0.10": false,
+      "fd42:2204:1::10": false
+    },
+    "outside_ssh_open_before_install": {
+      "198.18.0.10": true,
+      "fd42:2204:1::10": true
+    },
+    "private_http_works_public_side_blocked": true,
+    "private_ssh_ipv4": true,
+    "private_ssh_ipv4_ipv6": true,
+    "private_ssh_ipv6": true,
+    "reboot_ssh_docker_dns_and_firewall": true,
+    "rerun_preserves_hash_inode_uid_gid_with_container_running": true,
+    "unmodified_production_source_digest": true,
+    "vanilla_ubuntu_reboot": true
+  },
+  "commercial_tailnet_tested": false,
+  "commit": "d4f2c73b5cd427fea129157d91310c4f3a6d3ed4",
+  "control_plane": "Headscale 0.29.7",
+  "emulator_packages": "qemu-system-x86 1:8.2.2+ds-0ubuntu1.18\nseabios 1.16.3-2",
+  "explicit_ipv6_transport_target": "fd7a:115c:a1e0::2",
+  "family_failures": {},
+  "limitations": [
+    "Commercial Tailscale browser/account login not exercised",
+    "Outside NIC is simulated, not Contabo public routing",
+    "Provider reinstall panel and recovery console not exercised"
+  ],
+  "listeners_after_prepare": "LISTEN 0      4096            100.64.0.2%tailscale0:46590 0.0.0.0:*\nLISTEN 0      128                           0.0.0.0:22    0.0.0.0:*\nLISTEN 0      4096                    127.0.0.53%lo:53    0.0.0.0:*\nLISTEN 0      4096   [fd7a:115c:a1e0::2]%tailscale0:47166    [::]:*\nLISTEN 0      128                              [::]:22       [::]:*\nUNCONN 0      0       127.0.0.53%lo:53    0.0.0.0:*\nUNCONN 0      0      10.0.2.15%eth0:68    0.0.0.0:*\nUNCONN 0      0             0.0.0.0:41641 0.0.0.0:*\nUNCONN 0      0                [::]:41641    [::]:*",
+  "production_ready": false,
+  "reboot_wait_seconds": 900,
+  "source_digest": "586b2b46155719ff36d9f5c0bd6511eabc8380cb38b940ea1132e9245351c8b6",
+  "stage": "completed",
+  "status": "passed-isolated-control-plane",
+  "target_initial_boot_id": "d2a5a881-4cd5-458b-89fe-4a35d5616627",
+  "target_rebooted_boot_id": "19ab175f-e3ce-43a4-af29-89472386bb20",
+  "ubuntu_image_sha256": "f77bc6d59cb8deaa9657095736b5f5003f7705b47055f01823459715c967de6a"
+}

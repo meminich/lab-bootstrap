@@ -2,8 +2,9 @@
 
 Status: installer/playbook **eksperimental** tersedia. Guard, validasi config,
 receipt, urutan gate/firewall, manifest, dependency lock, syntax Ansible, serta
-render template dapat diuji tanpa privilege. Uji dua VM menghasilkan bukti parsial
-di bawah; instalasi end-to-end belum lulus. Protokol: [CHECKPOINT](CHECKPOINT.md).
+render template dapat diuji tanpa privilege. Acceptance end-to-end dua VM telah
+lulus dengan control plane terisolasi; bukan kelulusan seluruh matriks rilis atau
+akun/provider pemilik. Protokol: [CHECKPOINT](CHECKPOINT.md).
 
 ## Klaim, pemilik, dan bukti minimum
 
@@ -80,7 +81,32 @@ instruksi recovery console, serta review checkpoint privilege. Secret tidak bole
 masuk receipt, log, screenshot, atau artifact. Arsitektur yang belum diuji tidak
 boleh dilabeli didukung. Branch/PR ini bukan rilis installer.
 
-## Bukti VM parsial — 15 November 2026
+## Acceptance VM lulus — 15 November 2026
+
+Run [43651778256](https://github.com/meminich/lab-bootstrap/actions/runs/43651778256)
+**lulus** pada commit `d4f2c73b5cd427fea129157d91310c4f3a6d3ed4`.
+[Laporan JSON asli tersanitasi](evidence/vm-43651778256.json) disimpan permanen,
+identik dengan artifact run (artifact GitHub sementara memiliki masa retensi).
+
+- Dua kernel Ubuntu 22.04 amd64 sungguhan, QEMU TCG 8.2.2 + SeaBIOS 1.16.3;
+  Headscale 0.29.7 HTTPS privat, tanpa kredensial tailnet produksi.
+- Reboot Ubuntu polos sebelum installer lulus. Installer payload tidak diubah
+  di guest; result digest cocok dengan digest yang dicatat di bawah.
+- Missing receipt menolak lockdown tanpa memutus akses awal; tiga receipt dari
+  sesi SSH/sudo nyata dan terpisah lulus sebelum/sesudah lockdown/foundation.
+- MagicDNS nama pendek, transport SSH IPv4 dan IPv6 lulus. SSH pada interface
+  non-tailnet IPv4/IPv6 tertutup setelah lockdown.
+- HTTP container melalui tailnet lulus, port yang sama pada interface luar tidak
+  bisa diakses; rerun dengan container berjalan menjaga hash/inode/UID/GID fixture.
+- Reboot pasca-install mengubah boot ID; hostname SSH, HTTP Docker, firewall,
+  dan integritas fixture kembali lulus sesudah reboot.
+
+Batas: bukan login browser SaaS, ACL/MFA akun pemilik, image/routing publik
+Contabo, atau recovery console. Seluruh failure-injection matrix di atas belum
+lulus hanya karena satu acceptance run ini lulus. `production_ready` tetap false;
+PR tidak otomatis di-merge dan tidak ada rilis produksi.
+
+### Riwayat bukti parsial sebelum run lulus
 
 Run [43649254705](https://github.com/meminich/lab-bootstrap/actions/runs/43649254705)
 menguji commit `70cf5a77d596face48b5e6a434be09e5be403a5c`: Ubuntu polos tidak kembali
@@ -135,18 +161,18 @@ Payload digest: `586b2b46155719ff36d9f5c0bd6511eabc8380cb38b940ea1132e9245351c8b
   diekstrak benar-benar menjalankan plan tanpa membaca config.env atau membuat
   file tambahan, termasuk bytecode __pycache__ (wrapper dan direct Python entry).
   Readiness Docker juga menolak metadata IP yang belum benar-benar terpasang di
-  interface kernel; perilaku API sebenarnya tetap perlu uji boot pada VM.
+  interface kernel; bukti boot VM sebenarnya dilaporkan pada acceptance di atas.
 - **4 template/Compose checks lulus**: seluruh template dirender, YAML valid,
   mapping IP wajib, tanpa container_name tetap; Docker Compose `config` menerima
   env lengkap dan menolak IP kosong. Docker host diarahkan ke socket yang tidak
   ada dan config CLI kosong, sehingga tes tidak memakai daemon/credential nyata.
 - **3 playbook lolos syntax-check** dengan ansible-core terkunci. Tidak ada
-  playbook apply yang dijalankan.
+  playbook apply pada mesin kerja; apply hanya pada VM disposable acceptance.
 - Bootstrap tooling dari direktori kosong diuji: uv wheel/binary SHA256, managed
   Python dan 9 dependency controller dipasang di direktori temporer eksplisit.
   Tidak mengganti Python OS atau memasang paket OS.
 
-Ini bukti lokal kode/packaging, **bukan** bukti install Ubuntu 22.04 atau keamanan
-jaringan. CI Ubuntu 22.04 menjalankan suite/syntax yang sama, bukan install host.
-Belum ada uji VM fresh, PAM/Tailscale login nyata, probe dari luar tailnet, reboot,
-atau percobaan recovery console. Tidak ada rilis produksi atau perubahan VPS aktif.
+Tes lokal kode/packaging bukan pengganti acceptance jaringan. Workflow safety
+menjalankan suite/syntax; workflow VM terpisah memberi bukti instalasi/jaringan
+terbatas sebagaimana dilaporkan di atas. Recovery console belum diuji. Tidak ada
+rilis produksi atau perubahan VPS aktif.

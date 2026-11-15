@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-15 — Acceptance dua VM lulus termasuk reboot
+
+- Run 43651778256 pada commit d4f2c73 meluluskan baseline reboot, instalasi payload
+  asli, tiga SSH/sudo gate, MagicDNS, transport IPv4/IPv6, HTTP Docker privat,
+  probe interface luar, integritas rerun, dan reboot pasca-install dengan boot ID
+  berubah serta SSH/Docker/firewall/data pulih. Laporan asli di docs/evidence/.
+- Tools QEMU 8.2.2/SeaBIOS 1.16.3; guest tetap Ubuntu 22.04 amd64. Bukti dan batas
+  di docs/VERIFICATION.md. Bukan bukti akun SaaS/routing/console Contabo; seluruh
+  matriks failure-injection belum lulus. Tetap eksperimental, PR belum di-merge,
+  tidak ada rilis produksi atau perubahan VPS aktif.
+
 ## 2026-11-15 — Perbarui emulator fixture, guest tetap Jammy
 
 - Run 43649254705 gagal reboot Ubuntu polos sebelum installer dieksekusi. QMP

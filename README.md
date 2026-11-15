@@ -4,7 +4,8 @@ Resep membangun ulang VPS lab pribadi. Target desain: dari `ssh root@IP-VPS`
 menjadi akses harian `ssh vpsadmin@vpslab`, lewat Tailscale.
 
 > **BELUM SIAP UNTUK INSTALASI produksi.** Implementasi Ansible v2 tersedia sebagai
-> kandidat **eksperimental**, belum lolos instalasi VM/Tailscale client/reboot nyata.
+> kandidat **eksperimental**. [Acceptance dua VM terisolasi sudah lulus](docs/VERIFICATION.md),
+> termasuk SSH/sudo nyata dan reboot; matriks rilis serta akun/provider pemilik belum teruji penuh.
 > Script Bash lama tetap diblokir. Jangan bypass melalui versi historis.
 
 ## Yang sudah tersedia
