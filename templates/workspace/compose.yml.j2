@@ -1,0 +1,11 @@
+# Template only. No static container_name; each folder is a Compose project.
+services:
+  app:
+    image: nginx:alpine
+    ports:
+      - "${TAILSCALE_IP:?Set IP Tailscale host}:${PORT:?Set port unik}:80"
+    volumes:
+      - ./data:/usr/share/nginx/html:ro
+    environment:
+      TZ: "${TZ:?Set timezone}"
+    restart: unless-stopped

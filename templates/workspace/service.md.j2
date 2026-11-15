@@ -1,0 +1,11 @@
+# Layanan contoh
+
+Template nginx statis; ganti sesuai aplikasi. Belum dideploy installer.
+
+- Akses: `http://{{ hostname }}:<PORT>`; port/IP di `.env` (mode 600).
+- Data: `data/` harus ada sebelum `up`; template memasangnya read-only.
+- Jalankan: `docker compose up -d`; log: `docker compose logs`.
+- Hentikan: `docker compose down` (tidak menghapus data bind-mount).
+- Backup: folder data/config yang diperlukan, rahasia disimpan terpisah dengan aman.
+- Jika registry portal sudah tersedia, daftarkan layanan lewat proses yang disetujui.
+- Jangan mengubah ownership data massal; UID yang benar tergantung aplikasi.

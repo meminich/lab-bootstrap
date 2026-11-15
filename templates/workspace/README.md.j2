@@ -1,0 +1,21 @@
+# Playground
+
+Satu layanan satu folder. Aturan host: `../AGENTS.md`; aturan workspace:
+`AGENTS.md`. Portal/registry dan aplikasi belum dipasang oleh bootstrap.
+
+Untuk layanan contoh baru:
+
+```bash
+cp -r _template contoh
+cd contoh
+cp .env.example .env
+chmod 600 .env
+# Edit PORT di .env agar unik; periksa TAILSCALE_IP sesuai host ini.
+docker compose config --quiet
+docker compose up -d
+```
+
+Akses dari client Tailscale: `http://{{ hostname }}:<PORT>`.
+IP Tailscale harus eksplisit. Jangan mengganti mapping menjadi `8080:80`.
+Contoh ini belum dijalankan oleh installer. Setelah mendapat grup docker,
+reconnect SSH agar membership baru berlaku. Grup Docker setara root.

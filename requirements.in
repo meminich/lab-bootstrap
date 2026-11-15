@@ -1,0 +1,2 @@
+# Controller only. The managed host keeps Ubuntu's /usr/bin/python3.
+ansible-core==2.21.6

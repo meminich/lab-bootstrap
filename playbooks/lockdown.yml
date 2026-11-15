@@ -1,0 +1,89 @@
+---
+- name: Lock public access only after a fresh external checkpoint
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  pre_tasks:
+    - name: Refuse check mode that would skip access gates
+      ansible.builtin.assert:
+        that: not ansible_check_mode
+    - name: Validate root-owned single-use access receipt
+      ansible.builtin.command:
+        argv: [/usr/bin/python3, -I, -B, "{{ source_dir }}/labbootstrap/gate.py"]
+      changed_when: false
+  tasks:
+    - name: Check whether managed SSH drop-in already exists
+      ansible.builtin.stat:
+        path: /etc/ssh/sshd_config.d/00-lab-bootstrap.conf
+        follow: false
+      register: previous_ssh
+    - name: Save only the previous managed SSH drop-in for rollback
+      ansible.builtin.copy:
+        src: /etc/ssh/sshd_config.d/00-lab-bootstrap.conf
+        dest: /var/lib/lab-bootstrap/ssh-dropin.previous
+        remote_src: true
+        mode: '0600'
+      when: previous_ssh.stat.exists
+    - name: Apply SSH policy with validation and bounded rollback
+      block:
+        - name: Write dedicated SSH policy
+          ansible.builtin.copy:
+            dest: /etc/ssh/sshd_config.d/00-lab-bootstrap.conf
+            content: |
+              # Managed by lab-bootstrap. Tailscale SSH has its own tailnet policy.
+              PasswordAuthentication no
+              KbdInteractiveAuthentication no
+              PermitRootLogin no
+              PubkeyAuthentication yes
+            owner: root
+            group: root
+            mode: '0644'
+          register: ssh_update
+        - name: Validate complete SSH configuration
+          ansible.builtin.command: /usr/sbin/sshd -t
+          changed_when: false
+        - name: Read effective policy (detect an earlier conflicting directive)
+          ansible.builtin.command: /usr/sbin/sshd -T
+          changed_when: false
+          register: effective_ssh
+        - name: Check effective authentication policy
+          ansible.builtin.assert:
+            that:
+              - "'passwordauthentication no' in effective_ssh.stdout_lines"
+              - "'kbdinteractiveauthentication no' in effective_ssh.stdout_lines"
+              - "'permitrootlogin no' in effective_ssh.stdout_lines"
+              - "'port 22' in effective_ssh.stdout_lines"
+        - name: Reload OpenSSH only when its managed configuration changed
+          ansible.builtin.systemd_service:
+            name: ssh
+            state: reloaded
+          when: ssh_update.changed
+      rescue:
+        - name: Restore previous managed drop-in if it existed
+          ansible.builtin.copy:
+            src: /var/lib/lab-bootstrap/ssh-dropin.previous
+            dest: /etc/ssh/sshd_config.d/00-lab-bootstrap.conf
+            remote_src: true
+            mode: '0644'
+          when: previous_ssh.stat.exists
+        - name: Remove only the newly created drop-in if none existed
+          ansible.builtin.file:
+            path: /etc/ssh/sshd_config.d/00-lab-bootstrap.conf
+            state: absent
+          when: not previous_ssh.stat.exists
+        - name: Validate restored configuration (do not restart on failure)
+          ansible.builtin.command: /usr/sbin/sshd -t
+          changed_when: false
+        - name: Stop before changing firewall
+          ansible.builtin.fail:
+            msg: SSH validation/reload failed. Managed drop-in restored; inspect via console.
+    - name: Manage IPv6 firewall too, not just IPv4
+      ansible.builtin.lineinfile:
+        path: /etc/default/ufw
+        regexp: '^IPV6='
+        line: IPV6=yes
+    - name: Converge firewall without reset or disabling protection
+      ansible.builtin.command:
+        argv: [/usr/bin/python3, -I, -B, "{{ source_dir }}/labbootstrap/firewall.py"]
+      register: firewall_apply
+      changed_when: (firewall_apply.stdout | from_json).changed
