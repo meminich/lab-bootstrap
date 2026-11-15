@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-11-15 — Gate negatif lulus, kandidat siap untuk merge
+
+- Run 43664621533 pada fa93d86 lulus: ACL ditolak, sudo salah tidak menghasilkan
+  receipt, TTL receipt asli lewat dan ditolak, serta Ctrl-C setelah lockdown lalu
+  resume melalui SSH admin dengan run ID/sesi baru. Tiga gate, Docker privat,
+  integritas data dan reboot kembali lulus pada payload hardening terbaru.
+- Laporan asli dipertahankan di docs/evidence/; SECURITY-REVIEW dan RECOVERY
+  disertakan di kandidat + checksum. Tes lokal: 81 regresi, 4 template/Compose,
+  3 playbook syntax. Gate port asing tidak dilonggarkan untuk mengejar kelulusan.
+- Disetujui untuk merge kandidat eksperimental setelah CI head akhir hijau;
+  production_ready tetap false. Tidak ada reinstall, rilis produksi, perubahan
+  tailnet, atau mutasi layanan/VPS aktif.
+
 ## 2026-11-15 — Gate kegagalan dan review sebelum merge
 
 - Run 43662194601 membuktikan penolakan ACL; sudo menolak password salah tetapi

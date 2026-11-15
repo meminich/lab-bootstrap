@@ -1,0 +1,55 @@
+{
+  "acceleration": "tcg",
+  "checks": {
+    "acl_denial_preserves_initial_access": true,
+    "checkpoints": [
+      "before-lockdown",
+      "after-lockdown",
+      "after-foundation"
+    ],
+    "client_magicdns_resolves_target": true,
+    "expired_receipt_preserves_initial_access": true,
+    "fixture_enrollment_without_production_credentials": true,
+    "interrupted_installer_resumes_via_admin_ssh_without_reopening_public": true,
+    "missing_receipt_preserves_initial_access": true,
+    "outside_ssh_blocked_ipv4_ipv6": {
+      "198.18.0.10": false,
+      "fd42:2204:1::10": false
+    },
+    "outside_ssh_open_before_install": {
+      "198.18.0.10": true,
+      "fd42:2204:1::10": true
+    },
+    "private_http_works_public_side_blocked": true,
+    "private_ssh_ipv4": true,
+    "private_ssh_ipv4_ipv6": true,
+    "private_ssh_ipv6": true,
+    "reboot_ssh_docker_dns_and_firewall": true,
+    "rerun_preserves_hash_inode_uid_gid_with_container_running": true,
+    "unmodified_production_source_digest": true,
+    "vanilla_ubuntu_reboot": true,
+    "wrong_sudo_password_cannot_create_receipt": true
+  },
+  "commercial_tailnet_tested": false,
+  "commit": "fa93d8680f747191d32951575b8d1cbefcc7b2e4",
+  "control_plane": "Headscale 0.29.7",
+  "emulator_packages": "qemu-system-x86 1:8.2.2+ds-0ubuntu1.18\nseabios 1.16.3-2",
+  "expiry_observed_guest_time": 1794709851.394827,
+  "expiry_wait_seconds": 876.0814247131348,
+  "explicit_ipv6_transport_target": "fd7a:115c:a1e0::2",
+  "family_failures": {},
+  "limitations": [
+    "Commercial Tailscale browser/account login not exercised",
+    "Outside NIC is simulated, not Contabo public routing",
+    "Provider reinstall panel and recovery console not exercised"
+  ],
+  "listeners_after_prepare": "LISTEN 0      4096            100.64.0.2%tailscale0:46590 0.0.0.0:*\nLISTEN 0      4096                    127.0.0.53%lo:53    0.0.0.0:*\nLISTEN 0      128                           0.0.0.0:22    0.0.0.0:*\nLISTEN 0      128                              [::]:22       [::]:*\nLISTEN 0      4096   [fd7a:115c:a1e0::2]%tailscale0:47166    [::]:*\nUNCONN 0      0             0.0.0.0:41641 0.0.0.0:*\nUNCONN 0      0       127.0.0.53%lo:53    0.0.0.0:*\nUNCONN 0      0      10.0.2.15%eth0:68    0.0.0.0:*\nUNCONN 0      0                [::]:41641    [::]:*",
+  "production_ready": false,
+  "reboot_wait_seconds": 900,
+  "source_digest": "6496587cfee8c109007bd96e7a416d25a79f669f8c72ee1931868ebf8ab5c80d",
+  "stage": "completed",
+  "status": "passed-isolated-control-plane",
+  "target_initial_boot_id": "6577d39e-bfc1-430f-a83d-1c2e4a8fa54f",
+  "target_rebooted_boot_id": "7a73d2bb-c6ea-43d6-a7c9-0a7953b1db13",
+  "ubuntu_image_sha256": "f77bc6d59cb8deaa9657095736b5f5003f7705b47055f01823459715c967de6a"
+}

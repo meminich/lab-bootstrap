@@ -1,7 +1,7 @@
 # Unattended fresh-VM acceptance
 
-Status: isolated acceptance passed in [run 43651778256](https://github.com/meminich/lab-bootstrap/actions/runs/43651778256).
-The [retained report](evidence/vm-43651778256.json) records the tested commit,
+Status: hardened acceptance including negative cases passed in [run 43664621533](https://github.com/meminich/lab-bootstrap/actions/runs/43664621533).
+The [retained report](evidence/vm-43664621533.json) records the tested commit,
 payload, guest image, checks, and limitations. No production Tailscale credentials
 were used. This is not a blanket production-readiness or provider claim.
 

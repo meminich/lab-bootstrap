@@ -2,9 +2,9 @@
 
 Status: installer/playbook **eksperimental** tersedia. Guard, validasi config,
 receipt, urutan gate/firewall, manifest, dependency lock, syntax Ansible, serta
-render template dapat diuji tanpa privilege. Acceptance baseline dua VM telah
-lulus dengan control plane terisolasi. Payload hardening terbaru perlu acceptance
-ulang dengan failure injection sebelum merge; bukan rilis produksi atau kelulusan
+render template dapat diuji tanpa privilege. Payload hardening terbaru telah
+lulus acceptance dua VM dengan failure injection terisolasi. Ini cukup untuk
+merge kandidat eksperimental, bukan rilis produksi atau kelulusan seluruh matriks
 akun/provider pemilik. Protokol: [CHECKPOINT](CHECKPOINT.md).
 
 ## Klaim, pemilik, dan bukti minimum
@@ -84,14 +84,20 @@ boleh dilabeli didukung. Branch/PR ini bukan rilis installer.
 
 ## Gate tambahan sebelum merge — 15 November 2026
 
+Run [43664621533](https://github.com/meminich/lab-bootstrap/actions/runs/43664621533)
+**lulus** pada commit `fa93d8680f747191d32951575b8d1cbefcc7b2e4` dengan payload digest
+terbaru di bawah. [Laporan asli tersanitasi](evidence/vm-43664621533.json) disimpan
+permanen dan diverifikasi identik dengan artifact run. Seluruh pemeriksaan Docker,
+IPv4/IPv6, integritas rerun, serta reboot baseline/pasca-install kembali lulus.
+
 | Klaim | Pemilik bukti | Jalur minimum / status |
 |---|---|---|
 | Paket tidak lengkap ditolak sebelum mutasi | Unit/regression repo | Hapus file runtime dari salinan nyata; digest wajib gagal. Lulus lokal. |
-| ACL SSH menolak admin tanpa lockdown | Fixture Headscale + client VM | Mulai policy SSH deny; login harus ditolak dan receipt tidak ada; SSH awal IPv4/IPv6 tetap terbuka. Menunggu run baru. |
-| Password sudo salah tidak menghasilkan receipt | Client VM/PAM | Kirim password salah lewat TTY hingga sudo menolak normal (3 percobaan default Jammy); periksa receipt tidak ada. Menunggu run baru. |
-| Receipt asli kedaluwarsa ditolak | Installer + client VM | Verifier membuat receipt nyata, tunggu TTL 900 detik/clock guest alami; submit harus STOP dan akses awal tetap tersedia. Tanpa edit receipt/clock. Menunggu run baru. |
-| Interupsi setelah lockdown dapat di-resume dengan aman | Installer + client VM | Ctrl-C pada checkpoint after-lockdown, cek publik tetap tertutup; resume source terpasang melalui SSH admin, run ID baru, sesi gate baru. Menunggu run baru. |
-| Kandidat dapat diverifikasi/dipulihkan | Packaging CI + review kode | Archive deterministik, manifest + SHA256, panduan RECOVERY, artifact source-only. Bukan rilis produksi. |
+| ACL SSH menolak admin tanpa lockdown | Fixture Headscale + client VM | Lulus: policy SSH deny menolak login, receipt tidak ada, SSH awal IPv4/IPv6 tetap terbuka. |
+| Password sudo salah tidak menghasilkan receipt | Client VM/PAM | Lulus: 3 password salah lewat TTY, sudo menolak normal, status command nonzero dan receipt tidak ada. |
+| Receipt asli kedaluwarsa ditolak | Installer + client VM | Lulus: receipt nyata dibiarkan melewati TTL asli 900 detik/clock guest; installer STOP dan akses awal tetap tersedia. Tanpa edit receipt/clock. |
+| Interupsi setelah lockdown dapat di-resume dengan aman | Installer + client VM | Lulus: Ctrl-C pada after-lockdown, publik tetap tertutup; resume source terpasang via SSH admin, run ID baru dan 3 tuple sesi terverifikasi berbeda. |
+| Kandidat dapat diverifikasi/dipulihkan | Packaging CI + review kode | Lulus build/roundtrip/checksum deterministik; panduan RECOVERY dan review disertakan di artifact source-only. Latihan console provider belum diuji. |
 
 Review dan batas trust: [SECURITY-REVIEW](SECURITY-REVIEW.md). Interupsi pada batas
 fase tidak membuktikan recovery dpkg yang diputus saat menulis paket. Matriks

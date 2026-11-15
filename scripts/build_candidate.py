@@ -23,7 +23,7 @@ def build(output):
     for name in ('README.md', 'CHANGELOG.md', 'bootstrap.sh', 'docs/AUDIT.md',
                  'docs/DESIGN.md', 'docs/VERIFICATION.md', 'docs/CHECKPOINT.md',
                  'docs/VM-ACCEPTANCE.md', 'docs/RECOVERY.md', 'docs/SECURITY-REVIEW.md',
-                 'docs/evidence/vm-43651778256.json'):
+                 'docs/evidence/vm-43651778256.json', 'docs/evidence/vm-43664621533.json'):
         path = ROOT / name
         if path.is_symlink() or not path.resolve().is_relative_to(ROOT.resolve()):
             raise RuntimeError('Artifact refuses symlink/out-of-tree documentation')

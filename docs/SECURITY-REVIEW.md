@@ -1,7 +1,9 @@
 # Review keamanan kandidat
 
-Status: review kode dan tes lokal diselesaikan; acceptance failure-injection
-terbaru harus lulus sebelum keputusan merge. Bukan audit pihak ketiga atau klaim
+Status: review kode, 81 regresi lokal, dan acceptance failure-injection
+[run 43664621533](https://github.com/meminich/lab-bootstrap/actions/runs/43664621533)
+lulus. Tidak ada temuan keamanan yang belum ditangani dalam lingkup kandidat ini.
+Layak di-merge sebagai kandidat eksperimental, bukan audit pihak ketiga atau klaim
 siap produksi. Bukti runtime dan digest ada di [VERIFICATION](VERIFICATION.md).
 
 ## Lingkup dan metode
@@ -41,6 +43,9 @@ Tidak membaca/mengubah rahasia, workload, SSH, firewall, atau rules VPS aktif.
   penerbitan rilis produksi, atau pernyataan seluruh matriks rilis sudah lulus.
 
 ## Keputusan merge
+
+Gate teknis untuk payload terbaru telah terpenuhi; merge tetap memakai head SHA
+yang cocok dan CI head akhir harus hijau. Tidak memakai bypass admin/force.
 
 Merge hanya setelah CI head yang direview hijau, acceptance negatif terbaru
 berhasil pada digest payload yang sama, bukti tersimpan permanen, kandidat dapat

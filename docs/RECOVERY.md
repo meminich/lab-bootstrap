@@ -58,6 +58,7 @@ systemctl status tailscaled ssh docker --no-pager
 tailscale status
 ip -br addr
 ss -ltnp
+ss -lunp
 ufw status verbose
 /usr/sbin/sshd -t
 tmux list-sessions
@@ -65,6 +66,9 @@ tmux list-sessions
 
 - Jangan `ufw disable/reset`, menambah public ALLOW, mematikan Tailscale, atau
   mereset password/ACL tanpa keputusan pemilik.
+- Jika preflight menolak socket asing/port acak, inspeksi pemiliknya dengan
+  `ss -lunp`/`ss -ltnp`. Jangan memberi whitelist rentang port acak agar lolos;
+  gate konservatif boleh menolak target yang belum bisa dibuktikan fresh.
 - Docker sengaja gagal start bila IP bind Tailscale belum benar-benar ada.
   Perbaiki login/interface Tailscale terlebih dahulu; jangan mengganti bind ke
   wildcard atau menghapus guard Docker untuk mengejar status hijau.
