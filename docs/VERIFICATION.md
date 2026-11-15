@@ -1,5 +1,25 @@
 # Evidence path dan syarat rilis
 
+## Launcher terpandu (terpisah dari payload v0.1.0)
+
+`setup.py` hanya mengunduh release v0.1.0 dengan SHA256 tertanam, menanyakan
+konfigurasi, dan menyerahkan kontrol ke installer release itu. Perubahan launcher
+tidak mengubah playbook, gate, atau source digest payload yang sudah diuji.
+
+Jalur verifikasi launcher:
+
+- Unit/regression: help/dry-run tanpa download, penolakan sebelum download,
+  checksum salah, ukuran berlebih, HTTP redirect tidak aman, path traversal,
+  symlink/hardlink, file duplikat, paket tidak lengkap, dan kegagalan download
+  tidak pernah menjalankan installer. Handoff mempertahankan guard eksperimen
+  dan meneruskan exit status installer; tidak memanggil apply sungguhan.
+- Smoke paket publik: download HTTPS aktual, verifikasi digest tertanam, ekstraksi,
+  source digest cocok dengan bukti v0.1.0, dan hanya jalankan `install.sh --dry-run`
+  dari hasil ekstraksi. Tidak ada preflight/apply di VPS aktif.
+- Acceptance VM sebelumnya hanya membuktikan payload lama, bukan interaksi
+  launcher baru pada Ubuntu fresh atau login akun/provider pemilik. Pengujian
+  launcher tidak mengubah status `production_ready=false`.
+
 Status: installer/playbook **eksperimental** tersedia. Guard, validasi config,
 receipt, urutan gate/firewall, manifest, dependency lock, syntax Ansible, serta
 render template dapat diuji tanpa privilege. Payload hardening terbaru telah
