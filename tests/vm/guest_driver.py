@@ -523,6 +523,8 @@ def acceptance():
     REPORT['checks']['outside_ssh_open_before_install'] = baseline
     initial_boot = factory(2222, 'cat /proc/sys/kernel/random/boot_id')
     REPORT['target_initial_boot_id'] = initial_boot
+    (WORK / 'public/listeners-before-install.txt').write_text(
+        redact(factory(2222, 'ss -H -ltnp; ss -H -lunp')))
     stage('stage-unmodified-candidate')
     candidate = WORK / META['candidate']
     run(['scp', '-P', '2222', '-i', str(KEY), '-o', 'BatchMode=yes',
@@ -662,7 +664,7 @@ if __name__ == '__main__':
         vm_diagnostics()
         try:
             (WORK / 'public/listeners-at-failure.txt').write_text(
-                redact(factory(2222, 'ss -H -ltn; ss -H -lun', timeout=15)))
+                redact(factory(2222, 'ss -H -ltnp; ss -H -lunp', timeout=15)))
         except (subprocess.SubprocessError, OSError):
             pass
         for name in ('target', 'client'):

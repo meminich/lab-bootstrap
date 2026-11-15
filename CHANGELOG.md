@@ -2,6 +2,8 @@
 
 ## 2026-11-15 — Gate kegagalan dan review sebelum merge
 
+- Run 43661212671 menolak UDP wildcard port acak sebelum apply. Tambah metadata
+  pemilik socket sebelum install/saat gagal; tidak mengendurkan gate port asing.
 - Review menemukan digest paket tidak lengkap belum selalu ditolak; wajibkan
   semua entry point/playbook/template runtime sebelum host preflight. Tambah tes
   file hilang nyata serta batas owner/perms/symlink state. Perbarui pesan eksperimen.
