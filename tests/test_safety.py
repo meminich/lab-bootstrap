@@ -128,12 +128,16 @@ class DocumentationContract(unittest.TestCase):
     def text(self, path):
         return (ROOT / path).read_text(encoding="utf-8")
 
-    def test_readme_does_not_offer_live_installer(self):
+    def test_readme_launcher_keeps_fresh_host_and_experimental_boundaries(self):
         readme = self.text("README.md")
         self.assertIn("BELUM SIAP UNTUK INSTALASI", readme)
         self.assertIn("22.04 LTS", readme)
-        self.assertNotIn("raw.githubusercontent.com", readme)
-        self.assertNotIn("curl -fsSL", readme)
+        self.assertIn("curl -fSLo lab-setup.py", readme)
+        self.assertIn("&& python3 -I -B lab-setup.py", readme)
+        self.assertIn("branch review", readme)
+        self.assertIn("VPS existing", readme)
+        self.assertIn("SHA256", readme)
+        self.assertNotRegex(readme, r"curl[^\n]*\|\s*(?:bash|sh|python)")
 
     def test_readme_relative_links_resolve(self):
         for target in re.findall(r"\]\(([^)#]+)(?:#[^)]*)?\)", self.text("README.md")):

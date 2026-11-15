@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-11-15 — Launcher instalasi terpandu
+
+- Tambah `setup.py` standalone: download payload rilis v0.1.0 dengan SHA256
+  tertanam, ekstraksi terbatas tanpa link/traversal, prompt konfigurasi tervalidasi,
+  lalu jalankan installer yang sama dengan seluruh preflight dan checkpoint.
+- README mendahulukan satu perintah download + wizard untuk VPS fresh. Launcher
+  masih branch review; tidak menerbitkan ulang rilis atau mengubah payload teruji.
+- Launcher tidak memasang dependensi sendiri, melewati guard eksperimen, atau
+  mengambil alih state existing. `--dry-run`/`--help` tanpa download atau mutasi.
+- Verifikasi: 94 unit/regression tests lulus. Download release publik aktual,
+  checksum, ekstraksi, default konfigurasi, source digest, dan dry-run dari paket
+  lulus. Tidak menjalankan preflight/apply pada VPS aktif; acceptance payload lama
+  tidak membuktikan interaksi launcher baru pada Ubuntu fresh.
+
 ## 2026-11-15 — Gate negatif lulus, kandidat siap untuk merge
 
 - Run 43664621533 pada fa93d86 lulus: ACL ditolak, sudo salah tidak menghasilkan

@@ -8,7 +8,51 @@ menjadi akses harian `ssh vpsadmin@vpslab`, lewat Tailscale.
 > termasuk SSH/sudo nyata dan reboot; matriks rilis serta akun/provider pemilik belum teruji penuh.
 > Script Bash lama tetap diblokir. Jangan bypass melalui versi historis.
 
-## Yang sudah tersedia
+## Install di VPS fresh — mulai di sini
+
+Pilih **Ubuntu Server 22.04 LTS amd64** saat reinstall. Ini bukan installer untuk
+VPS existing. Siapkan console/VNC provider dan laptop yang sudah terhubung Tailscale.
+Bootstrap memasang fondasi host, Docker, dan workspace; **bukan** portal, OpenCode,
+aplikasi, atau pemulihan data lama.
+
+Login dari laptop:
+
+```bash
+ssh root@IP-VPS
+```
+
+Di terminal VPS tersebut, jalankan satu perintah:
+
+```bash
+curl -fSLo lab-setup.py https://raw.githubusercontent.com/meminich/lab-bootstrap/feat/guided-installer-launcher/setup.py && python3 -I -B lab-setup.py
+```
+
+URL launcher di atas masih **branch review**, belum rilis launcher bertag. Gunakan
+hanya setelah meninjau branch tersebut. Launcher mengunduh payload **v0.1.0** yang
+tetap dan memverifikasi SHA256 yang tertanam sebelum menjalankannya. Tidak perlu
+mengunduh archive, mengekstrak, membuat config JSON, atau mengingat flag sendiri.
+Download hanya dari repo yang dipercaya; checksum bukan tanda tangan publisher.
+
+Selanjutnya ikuti terminal:
+
+1. Isi nama admin, nama VPS, timezone, dan swap. **Enter** memakai default.
+2. Installer memeriksa VPS fresh, lalu meminta konfirmasi sebelum mengubah sistem.
+3. Buat password sudo ketika diminta dan buka URL login Tailscale yang muncul.
+4. Buka **terminal kedua di laptop**, salin perintah SSH dan verifier yang ditampilkan.
+   Ada tiga checkpoint; gunakan sesi SSH baru setiap kali diminta.
+5. Kembali ke terminal installer sampai muncul hasil akhir dan alamat login harian.
+
+**Jangan tutup terminal awal sebelum selesai.** Proses panjang berjalan dalam tmux.
+Jika SSH terputus atau proses berhenti, lihat [cara menyambung/resume](#jika-koneksi-putus).
+Jangan menjalankan download ulang untuk mengambil alih instalasi yang terhenti.
+
+Paket tetap eksperimental. Login Tailscale akun pemilik, image/routing Contabo,
+dan console recovery belum diuji penuh. Tiga checkpoint akses tetap wajib; installer
+tidak otomatis reboot atau mengklaim tes eksternal yang belum dilakukan sudah lulus.
+
+## Informasi teknis dan pengembangan
+
+### Yang sudah tersedia
 
 - [Audit kode lama dan batas pemeriksaan](docs/AUDIT.md).
 - [Desain dan implementasi Ubuntu Server 22.04 LTS amd64](docs/DESIGN.md).
@@ -18,7 +62,7 @@ menjadi akses harian `ssh vpsadmin@vpslab`, lewat Tailscale.
   saat pengembangan**. Installer hanya memasangnya ke target fresh yang disetujui.
 - Source lama di `legacy/bootstrap.sh`, untuk referensi saja dan tidak bisa dijalankan.
 
-## Yang aman dijalankan sekarang
+### Pemeriksaan aman dari source
 
 Dari checkout repo, tanpa root:
 
@@ -30,10 +74,10 @@ python3 -B -m unittest discover -s tests -v
 
 `--dry-run` hanya mencetak **rencana**, bukan simulasi Ansible. Tidak
 membaca `config.env`, menulis log/config, atau menjalankan perubahan host.
-Perintah instalasi final akan dipublikasikan bersama rilis teruji, dengan versi
-tetap dan checksum. Jangan mengandalkan URL `main` untuk rebuild yang konsisten.
+Launcher di atas mengambil payload rilis tetap dan memeriksa checksum. Untuk
+rebuild konsisten, catat pula versi/commit launcher yang ditinjau; branch dapat berubah.
 
-## Pengujian kandidat (bukan pada VPS aktif)
+### Penggunaan manual / pengujian kandidat (bukan pada VPS aktif)
 
 Gunakan **seluruh checkout/paket kandidat** pada VPS/VM Ubuntu 22.04 amd64 fresh
 yang memang boleh diubah. Jangan hanya mengunduh install.sh: file itu membutuhkan
@@ -50,6 +94,8 @@ Config opsional berupa JSON eksplisit (`--config /root/lab-config.json`), dengan
 field `admin_user`, `hostname`, `timezone`, `swap_gib`. Tanpa config, default dari
 desain digunakan. Password tidak dimasukkan ke JSON. Tidak ada `--yes`,
 `--skip-verify`, auto-prune, atau auto-reboot.
+
+## Jika koneksi putus
 
 Jika koneksi putus sebelum Tailscale siap, login root seperti awal lalu
 `tmux attach -t lab-bootstrap`. Sesudah Tailscale siap, login
